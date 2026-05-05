@@ -1,0 +1,59 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}default{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'login/css/nav.css' %}">
+    <script src="{% static 'login/js/nav.js' %}" defer></script>
+</head>
+<body>
+    <nav class="top-nav">
+        <ul class="top-nav-links">
+            <li ><a href="{% url 'index' %}">首页</a></li>
+            <li><a href="#">首页</a></li>
+            <li><a href="#">content2</a></li>
+            <li><a href="#">content3</a></li>
+        </ul>
+        <div class="top-nav-links">
+        </div>
+        <img src="{% if data.avatar %}{{ data.avatar.url }}{% else %}{% static 'login/images/default.jpeg' %}{% endif %}" alt="用户头像" class="user-avatar">
+
+    </nav>
+
+    <div class="user-panel" id="userPanel">
+        <div class="panel-content">
+            <div class="user-info">
+                <h3>帐号信息</h3>
+                <p><span class="user-panel-info1">  用户名:</span><span class="user-panel-info2">{{ request.session.info.account }}</span></p>
+                <p><span class="user-panel-info1">  UID:</span><span class="user-panel-info2">{{ request.session.info.uid }}</span></p>
+                <p><span class="user-panel-info1">  注册时间:</span><span class="user-panel-info2">{{ request.session.info.create_time }}</span></p>
+                <p><span class="user-panel-info1">  登录时间:</span><span class="user-panel-info2">{{ request.session.info.login_time }}</span></p>
+                <p><a href="{% url 'modify_info' %}" style="text-align: center;">修改信息</a></p>
+                <form action="{% url 'logout' %}" method="post" style="text-align: center;">
+                    {% csrf_token %}
+                    <button type="submit">退出登录</button>
+                </form>
+            </div>
+        </div>
+      </div>
+
+        <!-- 左侧导航 -->
+    <nav class="left-nav">
+        <ul class="left-nav-links">
+            <li class="left-nav-li-1"></li>
+            <li class="left-nav-item"><a href="#sec1">Section 1</a></li>
+            <li class="left-nav-item"><a href="#sec2">Section 2</a></li>
+            <li class="left-nav-item"><a href="#sec3">Section 3</a></li>
+            <li class="left-nav-item"><a href="#sec4">Section 4</a></li>
+        </ul>
+    </nav>
+    
+    <!-- 页面内容 -->
+    <div>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

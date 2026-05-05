@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}FRP 服务管理{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    .frp-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .status-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .header-info { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+    .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; transition: all 0.3s; }
+    .status-online { background-color: #e6fffa; color: #08979c; border: 1px solid #87e8de; }
+    .status-offline { background-color: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .info-item { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #1890ff; }
+    .info-label { color: #888; font-size: 12px; display: block; margin-bottom: 5px; }
+    .info-value { font-family: "Monaco", "Consolas", monospace; font-weight: bold; color: #333; }
+
+    .action-group { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
+    .btn-frp { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+    .btn-start { background: #52c41a; color: white; }
+    .btn-stop { background: #ff4d4f; color: white; }
+    .btn-restart { background: #faad14; color: white; }
+    .btn-token { background: #13c2c2; color: white; }
+    
+    .btn-frp:disabled { background-color: #f0f0f0 !important; color: #bfbfbf !important; cursor: not-allowed !important; border: 1px solid #d9d9d9 !important; }
+
+    #console-out { background: #001529; color: #d6e4ff; padding: 15px; border-radius: 6px; font-family: "Consolas", monospace; height: 180px; overflow-y: auto; margin-top: 20px; font-size: 13px; line-height: 1.6; }
+    .chart-container { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: 350px; margin-top: 20px; }
+</style>
+
+<div id="url-config" style="display: none;"
+    data-start="{% url 'frp_api_start' %}"
+    data-stop="{% url 'frp_api_stop' %}"
+    data-restart="{% url 'frp_api_restart' %}"
+    data-token="{% url 'frp_api_update_token' %}"
+    data-status="{% url 'frp_api_status' %}">
+</div>
+
+<div class="frp-container">
+    <div class="status-card">
+        <div class="header-info">
+            <h2>FRP 服务控制台</h2>
+            <div id="status-indicator">
+                <span id="badge-el" class="status-badge {% if api_active %}status-online{% else %}status-offline{% endif %}">
+                    ● <span id="status-text">{% if api_active %}运行中{% else %}已停止{% endif %}</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item"><span class="info-label">绑定端口</span><span class="info-value">{{ config.bindPort|default:"7000" }}</span></div>
+            <div class="info-item"><span class="info-label">当前 Token</span><span class="info-value" id="current-token">{{ config.auth.token|default:"未配置" }}</span></div>
+            <div class="info-item"><span class="info-label">当前连接数</span><span class="info-value" id="cur-conns">0</span></div>
+            <div class="info-item"><span class="info-label">总流量 (入/出)</span><span class="info-value" id="total-traffic">0 / 0</span></div>
+        </div>
+
+        <div class="action-group">
+            {% if perms.can_start %}
+                <button id="btn-start" class="btn-frp btn-start" onclick="executeFrp('start')">启动服务</button>
+            {% endif %}
+            {% if perms.can_stop %}
+                <button id="btn-stop" class="btn-frp btn-stop" onclick="executeFrp('stop')">停止服务</button>
+            {% endif %}
+            {% if perms.can_restart %}
+                <button id="btn-restart" class="btn-frp btn-restart" onclick="executeFrp('restart')">重启服务</button>
+            {% endif %}
+            {% if perms.can_get_new_token %}
+                <button id="btn-token" class="btn-frp btn-token" onclick="executeFrp('token')">刷新 Token</button>
+            {% endif %}
+        </div>
+
+        <div id="console-out">
+            <div><span style="color:#52c41a">>></span> 系统就绪，正在监控状态...</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h4 style="margin-bottom: 15px;">实时趋势 (最近1分钟)</h4>
+        <canvas id="frpChart"></canvas>
+    </div>
+</div>
+
+<script>
+    const urlConfig = document.getElementById('url-config').dataset;
+    const MAX_POINTS = 20; 
+    let lastTrafficIn = 0;
+    let lastTs = 0;
+    const chartData = { labels: [], conns: [], speeds: [] };
+
+    // --- 1. 图表初始化 (增加 min: 0 配置) ---
+    const ctx = document.getElementById('frpChart').getContext('2d');
+    const frpChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                { label: '连接数', data: chartData.conns, borderColor: '#1890ff', backgroundColor: 'rgba(24,144,255,0.1)', fill: true, yAxisID: 'y', tension: 0.4 },
+                { label: '入站速率(KB/s)', data: chartData.speeds, borderColor: '#52c41a', borderDash: [5, 5], yAxisID: 'y1', tension: 0.4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    type: 'linear', 
+                    position: 'left', 
+                    min: 0, // 强制 Y 轴最小值为 0
+                    beginAtZero: true,
+                    ticks: { precision: 0 }, // 连接数只显示整数刻度
+                    title: { display: true, text: '连接数' } 
+                },
+                y1: { 
+                    type: 'linear', 
+                    position: 'right', 
+                    min: 0, // 强制速率轴最小值为 0
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false }, 
+                    title: { display: true, text: 'KB/s' } 
+                }
+            }
+        }
+    });
+
+    function printLog(msg, isError = false) {
+        const consoleDiv = document.getElementById('console-out');
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        if (isError) line.style.color = '#ff4d4f';
+        line.innerHTML = `<span style="color:#52c41a">[${time}]</span> ${msg}`;
+        consoleDiv.appendChild(line);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function refreshUI(active, data, token, ts) {
+        const badge = document.getElementById('badge-el');
+        const statusText = document.getElementById('status-text');
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+
+        if (active) {
+            badge.className = 'status-badge status-online';
+            statusText.innerText = '运行中 (v' + (data.version || '-') + ')';
+            document.getElementById('cur-conns').innerText = data.curConns || 0;
+            const tin = ((data.totalTrafficIn || 0) / 1024 / 1024).toFixed(2);
+            const tout = ((data.totalTrafficOut || 0) / 1024 / 1024).toFixed(2);
+            document.getElementById('total-traffic').innerText = tin + ' MB / ' + tout + ' MB';
+            document.getElementById('current-token').innerText = token;
+            
+            if (btnStart) btnStart.disabled = true;
+            if (btnStop) btnStop.disabled = false;
+
+            // --- 计算速率 (增加防御逻辑防止负数) ---
+            let speed = 0;
+            if (lastTs > 0) {
+                const timeDiff = ts - lastTs;
+                const trafficDiff = data.totalTrafficIn - lastTrafficIn;
+                
+                // 如果 trafficDiff < 0，说明服务重启过，流量重置了，此时我们将速率记为 0
+                if (trafficDiff >= 0 && timeDiff > 0) {
+                    speed = trafficDiff / 1024 / timeDiff;
+                } else {
+                    speed = 0; 
+                }
+            }
+            lastTrafficIn = data.totalTrafficIn;
+            lastTs = ts;
+
+            const timeLabel = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            chartData.labels.push(timeLabel);
+            chartData.conns.push(data.curConns);
+            chartData.speeds.push(speed.toFixed(2));
+
+            if (chartData.labels.length > MAX_POINTS) {
+                chartData.labels.shift();
+                chartData.conns.shift();
+                chartData.speeds.shift();
+            }
+            frpChart.update('none');
+        } else {
+            badge.className = 'status-badge status-offline';
+            statusText.innerText = '已停止';
+            document.getElementById('cur-conns').innerText = '0';
+            if (btnStart) btnStart.disabled = false;
+            if (btnStop) btnStop.disabled = true;
+            
+            // 服务停止时重置上次流量记录，防止下次启动时出现负数瞬跳
+            lastTrafficIn = 0;
+            lastTs = 0;
+        }
+    }
+
+    function fetchStatus() {
+        fetch(urlConfig.status, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+            .then(res => res.json())
+            .then(res => {
+                refreshUI(res.active, res.data, res.config_token, res.ts);
+            })
+            .catch(err => console.error("状态更新失败", err));
+    }
+
+    function executeFrp(action) {
+        const url = urlConfig[action];
+        printLog(`正在执行操作: ${action}...`);
+        const allBtns = document.querySelectorAll('.btn-frp');
+        allBtns.forEach(b => b.disabled = true);
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status) {
+                printLog(`操作成功: ${res.msg}`);
+                setTimeout(fetchStatus, 1000);
+            } else {
+                printLog(`操作失败: ${res.msg}`, true);
+                fetchStatus();
+            }
+        })
+        .catch(err => {
+            printLog(`网络请求异常: ${err}`, true);
+            fetchStatus();
+        });
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 3000); 
+</script>
+{% endblock %}

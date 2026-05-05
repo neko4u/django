@@ -1,0 +1,12 @@
+venv38/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+Thumbs.db
+*.log
+local_settings.py
+.env
+staticfiles/
+media/

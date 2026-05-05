@@ -1,0 +1,577 @@
+{% extends "pageBase.html" %}
+{% load static %}
+{% block title %}Y space{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'login/css/page.css' %}">
+<!-- <script src="{% static 'login/js/page.js' %}" defer></script> -->
+<div class="page-container" id="page-container" style="
+
+    display:grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    grid-auto-rows: minmax(100px, auto);
+    gap:10px;
+    text-align: center; 
+    background-color:rgb(233, 242, 255);
+    width:100%;
+    height:auto;
+">
+    <div></div>
+
+    <div class="col-2" id="col-2" style="display: flex; width: 100%;height: 100%;min-width: 0;position: relative;flex-direction: column;padding-bottom: 150px;">
+        <div class="main-post-container" id="main-post-container" style="
+            width: 100%;
+            height: 600px;
+            border: none; 
+            border-radius: 12px; 
+            background-color: #f8f9fa;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1),0 2px 5px rgba(0, 0, 0, 0.05);
+            padding: 20px; 
+            color: #333;
+            line-height: 1.6;
+            ">
+            <div id="t1" style="height: 10%;border: none; "></div>
+            <div id="t2" style="height: 80%;border: none; text-align: left;"></div>
+            <div style="height: 10%;border: none; text-align: right;display: flex;">
+                <div style="width: 6%;"><img src="" id="t4" alt="" class="post-owner-avatar"></div>
+                <div id="t3" style="width: 88%;"></div>
+                <div style="width: 6%;display: flex;justify-content: center;align-items: center;"><img src="/media/urls/forum/heart_grey.png" draggable="false" style="height: 35px;cursor: pointer;" id="post_like" alt="" onclick=do_post_like()></div>
+            </div>
+        </div>
+        <div class="post-container" id="post-container">
+        </div>
+    </div>
+    <div style="height: 200px;text-align: center;"></div>
+
+    <div></div>
+    <div style="position: fixed;bottom: 0; width: 100%;display: flex;">
+        <div style="justify-content: center;align-items: center; width: 100%;background-color: aquamarine;">
+            <form id="post-form" action="post" enctype="multipart/form-data" style="text-align: center;padding-top: 20px;">
+                <textarea style="width: 48%; height: 70%;font-size: 24px;resize:none;" id="comment-content" placeholder="留下你的评论" autocomplete="off"></textarea>
+                <div><button id="comment-submit1" type="submit" style="width:120px;">发布</button></div>
+                <div style="height: 12px;"></div>
+            </form>
+        </div>
+    </div>
+
+
+</div>
+
+<style>
+    .post-owner-avatar{
+        margin-left:auto;
+        margin-right: auto;
+        width: 50px;                  /* 头像宽度 */
+        height: 50px;                 /* 头像高度 */
+        border-radius: 50%;           /* 圆形头像 */
+    }
+    .comment-user-avatar {
+        margin-left:auto;
+        margin-right: auto;
+        width: 45px;                  /* 头像宽度 */
+        height: 45px;                 /* 头像高度 */
+        border-radius: 50%;           /* 圆形头像 */
+    }
+    .sub-comment-user-avatar {
+        margin-left:auto;
+        margin-right: auto;
+        width: 32px;                  /* 头像宽度 */
+        height: 32px;                 /* 头像高度 */
+        border-radius: 50%;           /* 圆形头像 */
+    }
+</style>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("pid");
+    let current_index = 0;
+    const items_per_load = 5;
+    const sub_items_per_load = 5;
+    let publickData = [];
+    let publickData_sub_comments = {};
+    let likedCommentIds = [];
+    let liked_comment_list = [];
+    let indexNum = 0; //查询数据库条数指示器
+    let sub_index_map = {};
+    let sub_current_index_map = {};
+    const col2 = document.getElementById("col-2");
+
+    document.addEventListener('DOMContentLoaded', function(){
+        get_post_detail(event);
+        get_comment();
+    });
+
+    document.getElementById("comment-submit1").addEventListener('click',function(event){
+        event.preventDefault();
+        create_comment(1,0,0);
+        location.reload();
+    });
+
+
+    function get_post_like(){
+        // 获取点赞状态
+        const formData = new FormData();
+        formData.append('pid', pid);
+        fetch('/get_post_like/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_liked === true){
+                const like = document.getElementById("post_like");
+                like.src = "/media/urls/forum/heart_red.png";
+            }
+        })
+    }
+
+    function do_post_like(){
+        // 点赞或者取消点赞
+        const formData = new FormData();
+        formData.append('pid', pid);
+        fetch('/do_post_like/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.do_like === true){
+                const like = document.getElementById("post_like");
+                like.src = "/media/urls/forum/heart_red.png";
+            }
+            else{
+                const like = document.getElementById("post_like");
+                like.src = "/media/urls/forum/heart_grey.png";
+            }
+        })
+    }
+
+    // document.getElementsByClassName("comment_like_icon").addEventListener('click',function(e){
+    //     const cid = Number(e.target.id);
+    //     do_comment_like(cid);
+    // })
+
+    function do_comment_like(cid){
+        // 点赞或者取消点赞
+        const formData = new FormData();
+        const tt = Number(cid);
+        // 添加获取cid的方式
+        formData.append('pid', pid);
+        formData.append('cid', cid);
+        fetch('/do_comment_like/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.do_like === true){
+                const like = document.getElementById(cid);
+                like.src = "/media/urls/forum/heart_red.png";
+                var temp_like_count = Number(document.getElementById(`t${cid}`).textContent);
+                temp_like_count = temp_like_count + 1;
+                document.getElementById(`t${cid}`).textContent = temp_like_count;
+            }
+            else{
+                const like = document.getElementById(cid);
+                like.src = "/media/urls/forum/heart_grey.png";
+                var temp_like_count = Number(document.getElementById(`t${cid}`).textContent);
+                temp_like_count = temp_like_count - 1;
+                document.getElementById(`t${cid}`).textContent = temp_like_count;
+            }
+        })
+    }
+
+    function get_comment(){
+        const formData = new FormData();
+        formData.append('pid', pid);
+        formData.append('indexNum',indexNum);
+        const csrftoken = getCookie("csrftoken");
+        fetch('/query_comments/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            // if (data.status === 'success'){
+                indexNum += 20;
+                current_index = 0;
+                publickData = data.comments_list;
+                likedCommentIds = data.liked_comment_cid;
+                items_to_load();
+            // }
+        })
+    }
+    function load_sub_comment(root_cid,is_first_click){
+        if(is_first_click){
+            get_sub_comment(root_cid);
+        }
+        else if(sub_current_index_map[root_cid] === 20){
+            get_sub_comment(root_cid);
+        }
+        else{
+            sub_items_to_load(root_cid);
+        }
+    }
+
+    function get_sub_comment(root_cid){
+        const formData = new FormData();
+        formData.append('pid', pid);
+        formData.append('root_cid',root_cid);
+        formData.append('sub_indexNum',sub_index_map[root_cid]);
+        const csrftoken = getCookie("csrftoken");
+        fetch('/query_sub_comments/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            // if (data.status === 'success'){
+                sub_index_map[root_cid] += 20;
+                sub_current_index_map[root_cid] = 0;
+                publickData_sub_comments[root_cid] = data.sub_comments_list;
+                // likedCommentIds = data.liked_comment_cid;
+                sub_items_to_load(root_cid);
+            // }
+        })
+    }
+
+    function create_comment(comment_type,root_cid,par_cid){
+        var type = '';
+        if (comment_type == 1){
+            type = 'post';
+            root_cid = 0;
+            par_cid = 0;
+        }   
+        else if (comment_type == 2){
+            type = 'comment';
+
+        }
+        const csrftoken = getCookie("csrftoken");
+        const content = document.getElementById("comment-content").value;
+        const formData = new FormData();
+        formData.append('content',content);
+        formData.append('comment_type',type);
+        formData.append('pid',pid);
+        formData.append('root_cid',root_cid);
+        formData.append('par_cid',par_cid);
+        fetch('/create_comment/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success'){
+                document.getElementById('comment-submit1').value = '';
+            }
+        })
+        console.log(formData);
+        console.log(content);
+        console.log(pid);
+        console.log(root_cid);
+    }
+
+    function create_sub_comment(comment_type,root_cid,par_cid){
+        var type = '';
+        if (comment_type == 1){
+            type = 'post';
+            root_cid = 0;
+            par_cid = 0;
+        }
+        else if (comment_type == 2){
+            type = 'comment';
+
+        }
+        const csrftoken = getCookie("csrftoken");
+        const tempId = `reply-panel-${par_cid}`;
+        const content = document.getElementById(tempId).value;
+        const formData = new FormData();
+        formData.append('content',content);
+        formData.append('comment_type',type);
+        formData.append('pid',pid);
+        formData.append('root_cid',root_cid);
+        formData.append('par_cid',par_cid);
+        fetch('/create_comment/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success'){
+                document.getElementById('comment-submit1').value = '';
+            }
+        })
+    }
+
+    function items_to_load(){
+        const itemsToLoad = publickData.slice(current_index,current_index + items_per_load);
+        itemsToLoad.forEach(item => {
+            const comment = render_comment(item);
+            sub_index_map[item.cid] = 2;
+            col2.appendChild(comment);
+            item.sub_comments.forEach(sub_item => {
+                const tempDiv = document.getElementById(`sub-comment-cid${item.cid}`);
+                const sub_comment_div = render_sub_comment(sub_item);
+                tempDiv.appendChild(sub_comment_div);
+            })
+            if (item.is_sub_comments_end === 0 ){
+                const load_div = document.createElement('div');
+                load_div.id = `load-sub-comment-cid${item.cid}`;
+                load_div.className = "sub-comment-load";
+                load_div.innerHTML = `
+                    <div style="color:blue;user-select: none; cursor: pointer;" onclick="load_sub_comment(${item.cid},1)">点击加载更多</div>
+                `;
+                const tempDiv = document.getElementById(`sub-comment-cid${item.cid}`);
+                tempDiv.appendChild(load_div);
+            }
+            current_index++;
+        });
+    }
+
+    function sub_items_to_load(root_cid){
+        var is_end = 0;
+        const sub_itemsToLoad = publickData_sub_comments[root_cid].slice(sub_current_index_map[root_cid],sub_current_index_map[root_cid] + sub_items_per_load);
+        sub_itemsToLoad.forEach(sub_item => {
+            const sub_comment = render_sub_comment(sub_item);
+            const tempDiv = document.getElementById(`sub-comment-cid${root_cid}`);
+            const sub_comment_div = render_sub_comment(sub_item);
+            tempDiv.appendChild(sub_comment_div);
+            sub_current_index_map[root_cid]++;
+            is_end = sub_item.is_sub_comments_end;
+        });
+        var load_div = document.getElementById(`load-sub-comment-cid${root_cid}`);
+        load_div.remove();
+        if(is_end === 0){
+            load_div.innerHTML = `
+                <div style="color:blue;user-select: none; cursor: pointer;" onclick="load_sub_comment(${root_cid},0)">点击加载更多</div>
+            `;
+        }
+        else{
+            load_div.innerHTML = `
+                <div style="color:gray;user-select: none;">已经全部加载完啦~</div>
+            `;
+        }
+        
+        const tempDiv = document.getElementById(`sub-comment-cid${root_cid}`);
+        tempDiv.appendChild(load_div);
+    }
+
+    // 渲染主评论
+    function render_comment(item){
+        const isLiked = likedCommentIds.includes(item.cid);
+        const likeIcon = isLiked
+            ? "/media/urls/forum/heart_red.png" 
+            : "/media/urls/forum/heart_grey.png";
+
+
+        const comment_item= document.createElement('div');
+        comment_item.style = "border: none;width:100%;min-height:200px;gap:10px;border-radius: 10px;";
+        comment_item.className = "comment-div";
+        comment_item.innerHTML = `
+        <div style="display:flex;flex-direction:column;min-height:200px;width:100%;border-radius: 5px;border: none; border-radius: 10px; background-color: #f8f9fa;box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.05);  padding: 12px;">
+            <div style="display:flex;width:100%; ">
+                <div style="width:6%;align-items:center;padding-top:8px;padding-left:8px;"><img src="${item.cowner.avatar_url}" alt="用户头像" class="comment-user-avatar" ></div>
+                <div style="flex:1;text-align:left;display:flex;flex-direction:column;">
+                    <div style="height:24px;padding-left:10px;padding-top:4px;">${item.cowner.name}</div>
+                    <div class="" style="flex:1;padding:10px 18px;min-height:144px;">${item.content}</div>
+                    <div class="" style="height:24px;text-align:right;padding-right:10px;">${item.create_time}<span style="user-select: none; cursor: pointer;margin-left:20px;margin-right:10px;"><span style="color:blue;" onclick="show_reply_panel(1,${item.cid},${item.cid},${item.cid})">回复</span></span></div>
+                </div>
+                <div style="justify-content:flex-end;display:flex;flex-direction:column;width:5%;">
+                    <div style="width:100%;margin-top:auto;"><img src="${likeIcon}" draggable="false" style="height: 35px;cursor: pointer;" id="${item.cid}" class="comment_like_icon" alt="" onclick="do_comment_like(${item.cid})"></div>
+                    <div style="width:100%;text-align:center;" id="t${item.cid}">${item.like_count}</div>
+                </div>
+            </div>
+
+            <div style="width:100%;border: none;">
+                <div id="reply-panel-cid${item.cid}">
+                    <!-- 回复框将插入到这里 -->
+                </div>
+                <div id="sub-comment-panel${item.cid}">
+                    <!-- 子评论渲染到这里 -->
+                </div>
+                <div id="sub-comment-cid${item.cid}">
+                    <!-- 子评论回复框插入到这里 -->
+                </div>
+            </div>
+        </div>
+        `;
+        return comment_item;
+    }
+
+    //点击回复后出现回复框
+    let currentReplyPanel = null;
+    let currentReplyPanel_par_cid = null;
+    function show_reply_panel(ctype,par_cid,root_cid,cid){
+        const isSamePanel = (currentReplyPanel === cid);
+        console.log("============");
+        console.log(currentReplyPanel);
+        console.log(cid);
+        console.log(isSamePanel);
+        if (currentReplyPanel){
+            const existingPanelContainer = document.getElementById(`reply-panel-cid${currentReplyPanel_par_cid}`);
+            if (existingPanelContainer) {
+                existingPanelContainer.innerHTML = '';
+                console.log("closed!");
+                console.log(currentReplyPanel);
+            }
+            currentReplyPanel = null;
+        }
+        if(!isSamePanel) {
+            // if (currentReplyPanel || (currentReplyPanel === par_cid)) {
+            //     const existingPanel = document.getElementById(`reply-panel-cid${currentReplyPanel}`);
+            //     if (existingPanel) {
+            //         existingPanel.innerHTML = '';
+            //     }
+            //     currentReplyPanel = null;
+            //     return;
+            // }
+            console.log("created!");
+            const replyPanel = document.createElement('div');    //取pid,定位在哪里生成replypanel
+            replyPanel.id = `reply-panel-${par_cid}`;
+            replyPanel.style.cssText = `
+                margin: 10px 0;
+                padding: 10px;
+                border: 1px solid black;
+                background-color: lightgray;
+                border-radius: 5px;
+            `;
+            replyPanel.innerHTML = `
+            <textarea style="width: 100%; height: 70%;font-size: 16px;resize:none;" id="comment-content" placeholder="回复评论" autocomplete="off"></textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <button onclick="submitReply(${ctype},${par_cid}, ${root_cid})" style="padding: 5px 15px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">提交</button>
+            </div>
+            `;
+
+            const replyPanelContainer = document.getElementById(`reply-panel-cid${par_cid}`);
+            if (replyPanelContainer) {
+                replyPanelContainer.innerHTML = '';
+                replyPanelContainer.appendChild(replyPanel);
+                
+                currentReplyPanel = cid;
+                currentReplyPanel_par_cid = par_cid;
+                const textarea = document.getElementById('comment-content');
+                if (textarea) {
+                    textarea.focus();
+                }
+            } else {
+                console.error(`找不到回复面板容器: reply-panel-cid${cid}`);
+            }
+        }
+        // create_comment(2,par_cid,root_cid);
+    }
+
+    // 添加提交回复的函数
+    function submitReply(ctype,par_cid, rootId) {
+        const textarea = document.getElementById('comment-content');
+        if (textarea) {
+            const content = textarea.value.trim();
+            if (content) {
+                create_comment(2, rootId, par_cid);
+                location.reload();
+            } else {
+                alert('回复内容不能为空');
+            }
+        }
+    }
+
+
+    // 渲染评论下的评论
+    function render_sub_comment(item){
+        const isLiked = likedCommentIds.includes(item.cid);
+        const likeIcon = isLiked
+            ? "/media/urls/forum/heart_red.png" 
+            : "/media/urls/forum/heart_grey.png";
+
+        const comment_item = document.createElement('div');
+        comment_item.setAttribute("style","border-radius: 10px; background-color: #f8f9fa;box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.05);  padding: 12px;");
+        comment_item.innerHTML = `
+        <div style="display:flex;min-height:30px;width:90%;padding-left:30px;">
+            <div style="width:6%;align-items:center;padding-top:3px;padding-left:3px;"><img src="${item.cowner.avatar_url}" alt="用户头像" class="sub-comment-user-avatar" ></div>
+            <div style="width:89%;text-align:left;display:flex;flex-direction:column;">
+                <div style="height:24px;padding-left:10px;padding-top:4px;">${item.cowner.name}</div>
+                <div class="" style="flex:1;padding:10px 18px;min-height:14px;">${item.content}</div>
+                <div class="" style="height:24px;text-align:right;padding-right:10px;">${item.create_time}     <span style="user-select: none; cursor: pointer;margin-left:20px;margin-right:10px;"><span style="color:blue;" onclick="show_reply_panel(2,${item.parent_comment_id},${item.root_comment_id},${item.cid})">回复</span></span></div>
+            </div>
+            <div style="justify-content:flex-end;display:flex;flex-direction:column;">
+                <div style="width:100%;margin-top:auto;"><img src="${likeIcon}" draggable="false" style="height: 25px;cursor: pointer;" id="${item.cid}" class="comment_like_icon" alt="" onclick="do_comment_like(${item.cid})"></div>
+                <div style="width:100%;text-align:center;" id="t${item.cid}">${item.like_count}</div>
+            </div>
+        </div>
+        `;
+        return comment_item;
+    }
+
+
+
+
+
+    const csrftoken = getCookie("csrftoken");
+    const temp1 = document.getElementById("t1");
+    const temp2 = document.getElementById("t2");
+    const temp3 = document.getElementById("t3");
+    var temp4 = document.getElementById("t4");
+    const formData = new FormData();
+    formData.append('pid', pid);
+    function get_post_detail(e){
+        fetch('/get_post_detail/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => {
+            return response.json();
+        })
+        .then(data =>{
+            temp1.textContent = data.post.title;
+            temp2.textContent = data.post.content;
+            temp3.textContent = data.post.create_time;
+            t4.src = data.post.avatar_url;
+        })
+        .catch(error => {
+
+        })
+    }
+
+    get_post_like();
+
+    var isLoading = false;
+    document.getElementById("content-container").addEventListener('scroll',function(){
+    var element = this;
+    var scrollTop = element.scrollTop;
+    var scrollHeight = element.scrollHeight;
+    var height = element.clientHeight;
+        if (scrollTop + height >= scrollHeight - 50 && isLoading == false) {
+            isLoading = true;
+            if(current_index < 10){
+                items_to_load();
+            }
+            else{
+                get_comment();
+                items_to_load();
+            }
+            
+            setTimeout(() => isLoading = false, 300);
+        }
+    });
+</script>
+{% endblock %}

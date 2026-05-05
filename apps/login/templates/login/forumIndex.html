@@ -1,0 +1,296 @@
+{% extends "forumBase.html" %}
+{% load static %}
+{% block title %}Y space{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'login/css/forumIndex.css' %}">
+<script src="{% static 'login/js/forumIndex.js' %}" defer></script>
+<div class="Y-main-panel" id="Y-main-panel" style="
+    width:100%;
+    height:100%;
+    display:grid;
+    grid-template-columns: 1fr 2fr 2fr 1fr;
+    gap:10px;
+    display:none;
+    ">
+    <div class="col-1"></div>
+    <div class="col-2" id="col-2">
+    </div>
+    <div class="col-3" id="col-3">
+    </div>
+    <div class="col-4"></div>
+</div>
+
+<div class="create_post-panel" id="create_post-panel" style="
+    background-color:lightblue;
+    width:100%;
+    height:100%;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 2fr 1fr 1fr;    
+    gap:10px;
+    display:none;
+    ">
+    <div style="grid-column:span 4">
+        <form id="post-form" action="post" enctype="multipart/form-data" style="width: 100%; height: 100%;text-align: center;">
+            <div><input type="text" id="post-title" style="width:60%;font-size:24px;resize:none;" placeholder="请输入标题~" autocomplete="off"></div>
+            <div style="height:3px;"></div>
+            <textarea style="width: 60%; height: 70%;font-size: 24px;resize:none;" id="post-content" placeholder="输入内容,记录美好回忆" autocomplete="off"></textarea>
+            <div><button id="post-submit" type="submit" style="width:120px;">发布</button></div>
+        </form>
+    </div>
+    <div style="grid-column:span 4"></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div> 
+</div>
+
+<style>
+    .col-2,.col-3{
+        display:grid;
+        grid-auto-rows:minmax(420px,auto);
+    }
+    .line-clamp-3{
+        overflow: hidden;
+        height:100%;
+        width:77%;
+        overflow-wrap:break-word;
+        word-break: break-all;
+        border-radius: 5px;
+            box-shadow: 
+                0 10px 25px rgba(0, 0, 0, 0.199), /* 外部阴影 */
+                inset 0 -2px 2px rgba(0, 0, 0, 0.068), /* 底部内阴影 */
+                inset 0 2px 2x rgba(255, 255, 255, 1); /* 顶部内阴影 */
+    }
+    .bubble-user-avatar {
+        margin-left:auto;
+        margin-right: auto;
+        width: 45px;                  /* 头像宽度 */
+        height: 45px;                 /* 头像高度 */
+        border-radius: 50%;           /* 圆形头像 */
+    }
+
+    .bubble {
+            position: relative;
+            width: 100%;
+            height: 90%; /* 固定高度 */
+            border: none !important; /* 覆盖内联边框样式 */
+            border-radius: 20px; /* 圆角效果 */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.95));
+            box-shadow: 
+                0 10px 25px rgba(0, 0, 0, 0.199), /* 外部阴影 */
+                inset 0 -10px 20px rgba(0, 0, 0, 0.068), /* 底部内阴影 */
+                inset 0 10px 20px rgba(255, 255, 255, 0.7); /* 顶部内阴影 */
+            overflow: hidden;
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+            transform: translateY(0);
+            z-index: 1;
+        }
+
+        /* 泡泡高光效果 */
+        .bubble::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 20%;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            filter: blur(10px);
+            z-index: 1;
+        }
+
+        .bubble a {
+            color: #1890ff !important; 
+        }
+
+        .bubble a:visited {
+            color: #1890ff !important;
+        }
+
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        get_post(event);
+    })
+
+    const panel1 = document.getElementById("Y-main-panel");
+    const panel2 = document.getElementById("create_post-panel");
+    let indexNum = 0;
+
+    document.getElementById("post-submit").addEventListener("click",function(event) {
+        event.preventDefault();
+        do_create_post();
+        indexNum = 0;
+        location.reload();
+    });
+
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    //文本截断函数,泡泡内容
+    function truncateText(text, maxLength) {
+        if (text.length > maxLength) {
+            return text.substring(0, maxLength - 1) + '...';
+        }
+        return text;
+    }
+
+    //加载内容
+    function create_bubble(item){
+        const bubble = document.createElement('div');
+        const tempContent = truncateText(item.content,65);
+        const tempTitle = truncateText(item.title,20);
+        bubble.style = "border: 1px solid black;width:100%;";
+        bubble.className = "bubble";
+        bubble.innerHTML = `
+        <div style="height:68%;">本泡泡没有上传图片</div>
+        <div id="title1" style="height:12%;width:100%;display:flex;justify-content:center;overflow-wrap:break-word;word-break: break-all;overflow:hidden;font-size:24px;"><a href="/forumIndex/page?pid=${item.pid}" style="text-decoration: none;width:90%;" target="_blank">${tempTitle}</a></div>
+        <div style="display:flex;height:20%;">
+            <div style="width:15%;display:flex;align-items:center;"><img src="${item.powner.avatar_url}" alt="用户头像" class="bubble-user-avatar"></div>
+            <div class="line-clamp-3">${tempContent}</div>
+            <div style="width:8%"></div>
+        </div>
+        `;
+        return bubble;
+    }
+
+    const col2 = document.getElementById("col-2");
+    const col3 = document.getElementById("col-3");
+    let current_index = 0;
+    const items_per_load = 6;
+    let publickData = [];
+    // const formData = new FormData();   不发送空formData可以减小开销
+    function get_post(e){
+        panel1.style.display = "grid";
+        panel2.style.display = "none";
+        const formData = new FormData();
+        formData.append('indexNum', indexNum);
+        const csrftoken = getCookie("csrftoken");
+        fetch('/query_posts/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => {
+            return response.json();
+        })
+        .then(data =>{
+            indexNum += 24;
+            publickData = data;
+            current_index = 0;
+            items_to_load();
+        })
+        .catch(error => {
+        })
+    }
+    
+    function items_to_load(){
+        const endBubble = document.createElement('div');
+        endBubble.style = "border: 1px solid black;width:100%;";
+        endBubble.className = "bubble";
+        endBubble.innerHTML = `<div style="">再往后面已经没有啦...</div>`
+        const itemsToLoad = publickData.slice(current_index,current_index + items_per_load);
+        const isLastBatch = (current_index + items_per_load) >= publickData.length;
+        itemsToLoad.forEach(item => {
+            const bubble = create_bubble(item);
+            if (current_index % 2 === 0){
+                col2.appendChild(bubble);
+            }
+            else {
+                    col3.appendChild(bubble);
+                if (isLastBatch && itemsToLoad.length % 2 !== 0){
+                    col3.appendChild(endBubble);
+                }
+            }
+            current_index++;
+        });
+    }
+
+    function do_create_post(){
+        const csrftoken = getCookie("csrftoken");
+        const title = document.getElementById("post-title").value;
+        const content = document.getElementById("post-content").value;
+        const formData = new FormData();
+        formData.append('title',title);
+        formData.append('content',content);
+        fetch('/create_post/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success'){
+                document.getElementById('post-title').value = '';
+                document.getElementById('post-content').value = '';
+            }
+        })
+    }
+
+    function create_post(e){
+        panel1.style.display = "none";
+        panel2.style.display = "grid";
+        const csrftoken = getCookie("csrftoken");
+        // 这个地方的fetch后续写个人中心数据的时候用这边获取对应的数据
+
+        // fetch('/create_post/',{
+        //     method: 'POST',
+        //     headers: {
+        //     'X-CSRFToken': csrftoken
+        //     },
+        //     body: formData,
+        // })
+        // .then(response => response.json())
+        // .then(data => {
+        //     if (data.status === 'success'){
+        //         document.getElementById('post-title').value = '';
+        //         document.getElementById('post-content').value = '';
+        //     }
+        // })
+    }
+
+    var isLoading = false;
+    document.getElementById("content-container").addEventListener('scroll',function(){
+    var element = this;
+    var scrollTop = element.scrollTop;
+    var scrollHeight = element.scrollHeight;
+    var height = element.clientHeight;
+        if (scrollTop + height >= scrollHeight - 50 && isLoading == false) {
+            isLoading = true;
+            if(current_index <= 20){
+                items_to_load();
+            }
+            else{
+                get_post();
+                items_to_load();
+            }
+            
+            setTimeout(() => isLoading = false, 300);
+        }
+    });
+
+</script>
+{% endblock %}

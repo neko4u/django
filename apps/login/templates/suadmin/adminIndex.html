@@ -1,0 +1,121 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台</title>
+    <link rel="stylesheet" href="{% static '' %}">
+    <script src="{% static '' %}" defer></script>
+</head>
+<script>
+
+    function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+    function create_post_AI(){
+        var pidInput = document.getElementById('pid_input');
+        var numInput = document.getElementById('pid_num_input');
+        var pid = pidInput.value;
+        var num = numInput.value;
+        if (num === ''){
+            num = 1;
+        }
+
+        if (pid === '') {
+            alert('需要输入pid!');
+            return;
+        }
+
+        const csrftoken = getCookie("csrftoken");
+        const formData = new FormData();
+        formData.append('pid',pid);
+        formData.append('num',num);
+
+        fetch('/ad_create_comment/',{
+            method: 'POST',
+            headers: {
+            'X-CSRFToken': csrftoken
+            },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success'){
+                document.getElementById('pid_input').value = '';
+                document.getElementById('pid_num_input').value = '';
+                alert("生成成功");
+            }
+        })
+    }
+
+    function loadTasks() {
+        fetch('/task-list-api/')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#task-table tbody');
+                tbody.innerHTML = '';
+                data.tasks.forEach(task => {
+                    const row = `<tr>
+                        <td>${task.id}</td>
+                        <td>${task.pid}</td>
+                        <td>${task.num}</td>
+                        <td>${task.status}</td>
+                        <td>${task.created_at}</td>
+                        <td>${task.result}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            });
+    }
+    // 页面加载时自动加载一次
+    loadTasks();
+    // 可选：每10秒自动刷新
+    setInterval(loadTasks, 10000);
+</script>
+<body>
+    <label for="">回复帖子:输入Pid后提交</label><br>
+    <input type="text" id="pid_input"><br>
+    <label for="">评论条数</label><br>
+    <input type="text" id="pid_num_input"><br>
+    <button onclick="create_post_AI()">提交</button><br>
+    <br><br><br>
+    <label for="">回复帖子:输入Pid后提交</label><br>
+    <input type="text"><br>
+    <label for="">评论条数</label><br>
+    <input type="text"><br>
+    <button>提交</button><br>
+    <br>
+    <br>
+    <div>
+        <h3>任务列表</h3>
+        <button onclick="loadTasks()">刷新</button>
+        <table border="1" id="task-table">
+            <thead>
+                <tr>
+                    <th>任务ID</th>
+                    <th>帖子ID</th>
+                    <th>条数</th>
+                    <th>状态</th>
+                    <th>提交时间</th>
+                    <th>结果</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}default{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'login/css/nav.css' %}">
+    <script src="{% static 'login/js/nav.js' %}" defer></script>
+</head>
+<script>
+    function handlePageLoad() {
+    const loader = document.getElementById('page-loader');
+
+    loader.classList.add('hidden');
+    
+    setTimeout(() => {
+        loader.style.display = 'none';
+    }, 500); 
+    }
+
+    document.onreadystatechange = function() {
+    if (document.readyState === 'interactive') {
+    }
+    
+    if (document.readyState === 'complete') {
+        handlePageLoad();
+    }
+    };
+
+    window.onload = handlePageLoad;
+
+    window.addEventListener('error', function(e) {
+    const loader = document.getElementById('page-loader');
+    loader.innerHTML = `
+        <div class="loader-container">
+        <div class="loader-error">⚠️</div>
+        <div class="loader-text">页面加载失败</div>
+        <button id="reload-button" class="loader-button">重新加载</button>
+        </div>
+    `;
+    
+    document.getElementById('reload-button').addEventListener('click', function() {
+        location.reload();
+    });
+    }, true);
+
+    setTimeout(() => {
+    const loader = document.getElementById('page-loader');
+    if (loader && loader.style.display !== 'none') {
+        document.querySelector('.loader-text').textContent = '正在努力加载，可能需要更长时间...';
+    }
+    }, 5000);
+</script>
+<body>
+    <div class="main-container">
+        <div style="grid-column: span 2;">
+            <nav class="top-nav">
+                <ul class="top-nav-links">
+                    <li ><a href="{% url 'index' %}">首页</a></li>
+                    <li><a href="{% url 'forumIndex' %}">Y space</a></li>
+                    <li><a href="#">content2</a></li>
+                    <li><a href="#">content3</a></li>
+                </ul>
+                <div class="top-nav-links">
+                </div>
+                <img src="{% if request.session.info.avatar %}{{ request.session.info.avatar }}{% else %}{% static 'media/images/default.jpeg' %}{% endif %}" alt="用户头像" class="user-avatar">
+            </nav>
+        </div>
+        <div>
+            <nav class="left-nav" id="left-nav">
+                <ul class="left-nav-links">
+                    <li class="left-nav-li-1" style="text-align: center;"><img src="/media/urls/base/hideNav.png" style="height: 38px;" id="switchPanelButton" alt="" onclick=switchNav()></li>
+                    <li class="left-nav-item"><a href="#sec1">Kirakira-Bimu</a></li>
+                    <li class="left-nav-item"><a href="#sec2">跨局域</a></li>
+                    <li class="left-nav-item"><a href="#sec3">Section 3</a></li>
+                    <li class="left-nav-item"><a href="#sec4">Section 4</a></li>
+                </ul>
+            </nav>
+        </div>
+            <!-- 页面内容 -->
+        <div class="context-container">
+            {% block content %}{% endblock %}
+        </div>
+        <div id="page-loader">
+            <div class="loader-container">
+                <div class="loader-spinner"></div>
+                <div class="loader-text">加载中，请稍候...</div>
+            </div>
+        </div>
+    
+        <div class="user-panel" id="userPanel">
+            <div class="panel-content">
+                <div class="user-info">
+                    <h3>帐号信息</h3>
+                    <p><span class="user-panel-info1">  昵称:</span><span class="user-panel-info2">{{ request.session.info.userName }}</span></p>
+                    <p><span class="user-panel-info1">  UID:</span><span class="user-panel-info2">{{ request.session.info.uid }}</span></p>
+                    <p><span class="user-panel-info1">  注册时间:</span><span class="user-panel-info2">{{ request.session.info.create_time }}</span></p>
+                    <p><span class="user-panel-info1">  登录时间:</span><span class="user-panel-info2">{{ request.session.info.login_time }}</span></p>
+                    <p style="text-align: center;"><a href="{% url 'modify_info' %}">修改信息</a></p>
+                    <form action="{% url 'logout' %}" method="post" style="text-align: center;">
+                        {% csrf_token %}
+                        <button type="submit">退出登录</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+</body>
+</html>

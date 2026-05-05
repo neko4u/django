@@ -1,0 +1,428 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modify</title>
+    <link rel="stylesheet" href="{% static 'login/css/modify_info.css' %}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.9/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.9/cropper.min.css"/>
+    <!-- <script src="{% static 'login/js/index.js' %}" defer></script> -->
+</head>
+<script>
+    function handlePageLoad() {
+    const loader = document.getElementById('page-loader');
+
+    loader.classList.add('hidden');
+    
+    setTimeout(() => {
+        loader.style.display = 'none';
+    }, 500); 
+    }
+
+    document.onreadystatechange = function() {
+    if (document.readyState === 'interactive') {
+    }
+    
+    if (document.readyState === 'complete') {
+        handlePageLoad();
+    }
+    };
+
+    window.onload = handlePageLoad;
+
+    window.addEventListener('error', function(e) {
+    const loader = document.getElementById('page-loader');
+    loader.innerHTML = `
+        <div class="loader-container">
+        <div class="loader-error">⚠️</div>
+        <div class="loader-text">页面加载失败</div>
+        <button id="reload-button" class="loader-button">重新加载</button>
+        </div>
+    `;
+    
+    document.getElementById('reload-button').addEventListener('click', function() {
+        location.reload();
+    });
+    }, true);
+
+    setTimeout(() => {
+    const loader = document.getElementById('page-loader');
+    if (loader && loader.style.display !== 'none') {
+        document.querySelector('.loader-text').textContent = '正在努力加载，可能需要更长时间...';
+    }
+    }, 5000);
+</script>
+<body>
+    <div id="page-loader">
+        <div class="loader-container">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">加载中，请稍候...</div>
+        </div>
+    </div>
+    <div class="mask" id="mask" style="height: 100%;width: 100%;background-color: #666666b7;z-index: 2005;position: fixed;display: none;">
+    </div>
+    <div class="modify-container">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modify-avatar-container">
+                <img 
+                src="{% if request.session.info.avatar %}{{ request.session.info.avatar }}{% else %}{% static 'media/images/default.jpeg' %}{% endif %}"
+                alt="用户头像" 
+                class="modify-user-avatar"
+                id="modify-user-avatar-img"
+                onclick="ModifyAvatar(event)">
+
+                <input
+                type="file" 
+                name="avatar" 
+                id="avatarInput" 
+                accept="image/jpeg, image/png, image/jpg"
+                style="display: none;">
+            </div>
+            <!--  -->
+            <div class="avatar-modify-panel" id="avatar-modify-panel" style="background-color: #ffffff;display: none;">
+                <div class="avatar-container" id="avatar-container">
+                    <img id="avatar" class="avatarPre">
+                </div>
+                <div class="avatar-controls" style="margin-left: auto;margin-right: auto;">
+                    <button type="button" class="btn-confirm" onclick="handleConfirmClick(event)">保存</button>
+                    <button type="button" class="btn-cancel" onclick="handleCancelClick(event)">取消</button>
+                </div>
+            </div>
+            <!--  -->
+            <style>
+                /* 核心容器样式 */
+                .avatar-modify-panel {
+                    text-align: center;
+                    position: fixed;
+                    top: 20%;
+                    left: 25%;
+                    width: 50%;
+                    height: 60%;
+                    z-index: 2010;
+                    display: none;
+                }
+                                
+                .avatar-container {
+                    display: inline-block;
+                    top: 2%;
+                    margin: 0 auto;
+                    z-index: 10002;
+                    width: 90%;
+                    height: 90%;
+                }
+
+                .avatarPre {
+                    margin: 0 auto;
+                    z-index: 2020;
+                    /* 864*496 */
+                }
+
+                
+                .avatar-controls {
+                    display: flex;
+                    justify-content: center;
+                    background: #fff;
+                    z-index: 2100; /* 确保按钮在最顶层 */
+                }
+                .avatar-container {
+                    position: relative !important;
+                    overflow: hidden !important;
+                }
+
+                /* 按钮样式 */
+                .btn-confirm, .btn-cancel {
+                    width: 84px;
+                    padding: 10px 26px;
+                    margin: 14px;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                }
+                
+                .btn-confirm {
+                    background: #2196F3;
+                    color: white;
+                }
+                
+                .btn-confirm:hover {
+                    background: #1976D2;
+                    transform: translateY(-1px);
+                }
+                
+                .btn-cancel {
+                    background: #666;
+                    color: white;
+                }
+                
+                .btn-cancel:hover {
+                    background: #444;
+                    transform: translateY(-1px);
+                }
+                </style>
+                
+                <script>
+                let cropper = null;
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            // 检查 cookie 名称是否匹配
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+
+                function ModifyAvatar(e){
+                    document.getElementById("avatarInput").click();
+                }
+
+                function handleCancelClick(e){
+                    var mask = document.getElementById("mask");
+                    var modify_panel = document.getElementById("avatar-modify-panel");
+                    mask.style.display = "none";
+                    modify_panel.style.display = "none";
+                }
+
+                function handleConfirmClick(e){
+                    if(!cropper) return;
+                    const csrftoken = getCookie("csrftoken");
+                    const canvas = cropper.getCroppedCanvas({
+                        width: 300,
+                        height: 300,
+                    })
+                    canvas.toBlob(async (blob) => {
+                        try {
+                            const formData = new FormData();
+                            formData.append('avatar', blob);
+                            fetch('/uploadAvatar/',{
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-CSRFToken': csrftoken
+                                }
+                            })
+                            .then(response => {
+                                return response.json(); // 确保解析响应
+                            })
+                            .then(data => {
+                                const imgTemp = new Image();
+                                imgTemp.onload = function() {
+                                    document.getElementById("modify-user-avatar-img").src = data.url;
+                                };
+                                imgTemp.src = data.url;
+                                console.log(data);
+                                console.log('{{ request.session.info.avatar }}');
+                            })
+                            .catch(error => {
+                                console.error('上传失败:', error);
+                            });
+                        }
+                        catch (error){
+                            return;
+                        }
+                    });
+                    var mask = document.getElementById("mask");
+                    var modify_panel = document.getElementById("avatar-modify-panel");
+                    mask.style.display = "none";
+                    modify_panel.style.display = "none";
+                }
+
+
+
+                document.getElementById("avatarInput").addEventListener('change',function(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    let MAX_WIDTH = 864;
+                    let MAX_HEIGHT = 496;
+                    const QUALITY = 0.6;
+                    var mask = document.getElementById("mask");
+                    var modify_panel = document.getElementById("avatar-modify-panel");
+                    mask.style.display = "block";
+                    modify_panel.style.display = "block";
+
+                    let reader = new FileReader();
+                    reader.onload = function(e){
+                        const image = document.getElementById("avatar");
+                        const preview = document.getElementById("avatar");
+
+                        if (cropper){
+                            cropper.destroy();
+                            cropper = null;
+                        }
+
+                        const tempImage = new Image();
+                        tempImage.onload = function() {
+                            const width = this.naturalWidth;
+                            const height = this.naturalHeight;
+                            let ratio = 1;
+                            var temp1 = document.getElementById("avatar-container").getBoundingClientRect();
+                            MAX_WIDTH = temp1.width;
+                            MAX_HEIGHT = temp1.height;
+                            if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                                ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+                            }   
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width * ratio;
+                            canvas.height = height * ratio;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(
+                                this,
+                                0, 0, width, height,       // 原始图像区域
+                                0, 0, canvas.width, canvas.height       // Canvas 绘制区域
+                            );
+                            image.src = canvas.toDataURL('image/jpeg', 0.8);
+                            cropper = new Cropper(image,{
+                                aspectRatio: 16 / 16,
+                                viewMode: 0,
+                                minContainerWidth: 100,
+                                minContainerHeight: 100,
+                                dragMode: 'move',
+                            });
+                        };
+                        tempImage.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+
+
+                function validateName(name) {
+                    if (!name) return "昵称不能为空";
+                    if (!/^[A-Za-z0-9]{4,16}$/.test(name)) {
+                        return "昵称请填写为用英文与数字形式4-16位";
+                    }
+                    return null;
+                }
+
+                function validateEmail(email) {
+                    if (!email) return "邮箱不能为空";
+                    if (!/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$/.test(email)) {
+                        return "请填写正确的邮箱格式";
+                    }
+                    return null;
+                }
+
+                function validatePhone(phone) {
+                    if (!phone) return "手机号不能为空";
+                    if (!/^1[3-9]\d{9}$/.test(phone)) {
+                        return "手机号码格式错误";
+                    }
+                    return null;
+                }
+
+                function showError(fieldId, message) {
+                    const errorElement = document.getElementById(fieldId);
+                    if (message) {
+                        errorElement.textContent = message;
+                        errorElement.style.display = 'block';
+                    } else {
+                        errorElement.style.display = 'none';
+                    }
+                }
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    const nameInput = document.querySelector('input[name="name"]');
+                    if (nameInput) {
+                        nameInput.addEventListener('input', function() {
+                            const error = validateName(this.value);
+                            showError('name-error', error);
+                        });
+                        
+                        nameInput.addEventListener('blur', function() {
+                            const error = validateName(this.value);
+                            showError('name-error', error);
+                        });
+                    }
+
+                    const emailInput = document.querySelector('input[name="email"]');
+                    if (emailInput) {
+                        emailInput.addEventListener('input', function() {
+                            const error = validateEmail(this.value);
+                            showError('email-error', error);
+                        });
+                        
+                        emailInput.addEventListener('blur', function() {
+                            const error = validateEmail(this.value);
+                            showError('email-error', error);
+                        });
+                    }
+
+                    const phoneInput = document.querySelector('input[name="phone"]');
+                    if (phoneInput) {
+                        phoneInput.addEventListener('input', function() {
+                            const error = validatePhone(this.value);
+                            showError('phone-error', error);
+                        });
+                        
+                        phoneInput.addEventListener('blur', function() {
+                            const error = validatePhone(this.value);
+                            showError('phone-error', error);
+                        });
+                    }
+                });
+
+            document.querySelector('form').addEventListener('submit', function(e) {
+                let hasError = false;
+                
+                const nameError = validateName(document.querySelector('input[name="name"]').value);
+                const emailError = validateEmail(document.querySelector('input[name="email"]').value);
+                const phoneError = validatePhone(document.querySelector('input[name="phone"]').value);
+                
+                showError('name-error', nameError);
+                showError('email-error', emailError);
+                showError('phone-error', phoneError);
+                
+                if (nameError || emailError || phoneError) {
+                    e.preventDefault();
+                    hasError = true;
+                }
+                
+                return !hasError;
+            });
+
+
+                </script>
+            <!--  -->
+
+            <div>
+                <label style="user-select: none;">帐号</label>
+                <input type="text" value="{{ form.instance.account }}" readonly disabled>
+            </div>
+            <div>
+                <label style="user-select: none;">昵称</label>
+                {{ form.name }}
+            </div>
+            <div>
+                <label style="user-select: none;">邮箱</label>
+                {{ form.email }}
+            </div>
+            <div>
+                <label style="user-select: none;">手机</label>
+                {{ form.phone }}
+            </div>
+            <button type="submit">保存</button>
+            <div style="width: 100%;display: table;">
+                <div id="name-error" class="error-message" style="color: red; font-size: 16px; text-align: center; display: none;"></div>
+                <div id="email-error" class="error-message" style="color: red; font-size: 16px; text-align: center; display: none;"></div>
+                <div id="phone-error" class="error-message" style="color: red; font-size: 16px; text-align: center; display: none;"></div>
+            </div>
+
+            <div style="justify-content: center;margin-top: 1rem;">
+                <a href="{% url 'index' %}" style="color: rgb(28, 99, 156);">返回主页</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

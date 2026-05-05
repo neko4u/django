@@ -1,0 +1,151 @@
+
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    font-family: 'Arial', sans-serif;
+}
+
+.modify-user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: block; /* 防止图片默认的 inline 行为干扰 */
+    margin: 0; /* 清除默认 margin */
+  }
+
+.modify-avatar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90px; /* 保持与之前一致 */
+    margin-bottom: 20px; /* 添加底部间距 */
+}
+
+.modify-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 350px;
+    text-align: center;
+}
+
+/* 标题 */
+.modify-container h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+/* 输入框与标签 */
+.form-group {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.modify-container label {
+    padding-right: 5px;
+    font-size: 16px;
+    color: #333;
+    width: 30%;
+}
+
+/* 注册表单的单行布局 */
+.modify-container div {
+    display: flex;
+    align-items: center; /* 确保标签和输入框垂直居中 */
+    margin-bottom: 15px; /* 每个字段之间的间距 */
+}
+
+
+.modify-container label {
+    flex-shrink: 0;  /* 禁止缩小 */
+    width: 100px; /* 固定宽度，可以根据需要调整 */
+    margin-right: 15px; /* 标签和输入框之间的间距 */
+    font-size: 16px;
+    color: #333;
+}
+
+
+.modify-container input[type="text"], 
+.modify-container input[type="email"], 
+.modify-container input[type="password"] {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button[type="submit"] {
+    width: 100%;
+    padding: 12px;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.error-message {
+    color: red;
+    text-align: center;
+    margin: 10px 0;
+    display: block;
+    width: 100%;
+}
+
+/* loader mask */
+#page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  
+  #page-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+  
+  .loader-container {
+    text-align: center;
+  }
+  
+  .loader-spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(74, 118, 233, 0.2);
+    border-radius: 50%;
+    border-top-color: #4a76e9;
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto 20px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .loader-text {
+    font-size: 16px;
+    color: #333;
+    font-weight: 500;
+  }
+/* end loader mask */
