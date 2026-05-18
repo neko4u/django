@@ -246,7 +246,7 @@ def get_permissions(request):
         'can_set_presence_penalty': perm.can_set_presence_penalty if perm else False,
         'can_set_frequency_penalty': perm.can_set_frequency_penalty if perm else False,
         'can_set_max_tokens': perm.can_set_max_tokens if perm else False,
-        'can_set_model': True,  # 模型选择默认允许
+        'can_set_model': True,
         'is_superadmin': perm.is_superadmin if perm else False,
     }
     return JsonResponse(data)

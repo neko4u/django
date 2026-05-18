@@ -169,10 +169,8 @@ async function sendMessage() {
 
     textarea.value = '';
 
-    // 添加用户消息气泡
     addMessageToUI('user', message);
 
-    // 添加助手气泡，初始显示“思考中...”
     const assistantMsgDiv = addMessageToUI('assistant', '');
     assistantMsgDiv.innerHTML = '<div class="content"><span class="thinking">思考中...</span></div>';
 

@@ -105,29 +105,21 @@ def update_config(conversation_id, uid, **kwargs):
     return True
 
 def send_message_stream(conversation_id, uid, user_message):
-    # 1. 验证对话
     try:
         conv = Conversation.objects.get(id=conversation_id, uid_id=uid, is_deleted=False)
     except Conversation.DoesNotExist:
         yield json.dumps({'error': '对话不存在'})
         return
 
-    # 2. 保存用户消息
     Message.objects.create(conversation=conv, role='user', content=user_message)
-
-    # 3. 获取配置
     config = ConversationConfig.objects.get(conversation=conv)
-
-    # 4. 获取对应的 LLM provider
     provider = get_provider_by_model(config.model_name)
 
-    # 5. 系统提示
     system_prompt = "You are a helpful assistant."
 
-    # 6. 加载历史消息并截断
     all_messages = list(Message.objects.filter(conversation=conv).order_by('created_at'))
     if all_messages:
-        all_messages.pop()   # 移除刚保存的当前用户消息
+        all_messages.pop()
 
     max_context = provider.max_context_tokens if provider.max_context_tokens else 8192
     output_tokens = config.max_tokens
@@ -153,7 +145,6 @@ def send_message_stream(conversation_id, uid, user_message):
             msg_obj['reasoning_content'] = msg.reasoning_content
         messages.append(msg_obj)
 
-    # 检查模型切换
     last_assistant_msg = None
     for msg in reversed(included_history):
         if msg.role == 'assistant':
@@ -165,7 +156,6 @@ def send_message_stream(conversation_id, uid, user_message):
 
     messages.append({"role": "user", "content": user_message})
 
-    # 7. 联网搜索参数
     enable_search = False
     model_cfg = {}  # 初始化，避免 UnboundLocalError
     if config.web_search_enabled:
@@ -173,10 +163,8 @@ def send_message_stream(conversation_id, uid, user_message):
         if model_cfg.get('web_search', False):
             enable_search = True
 
-    # 8. 创建任务记录
     task = create_llm_task(uid, conv, config.model_name)
 
-    # 9. 构建请求 payload
     payload = {
         'model': config.model_name,
         'messages': messages,
@@ -195,12 +183,10 @@ def send_message_stream(conversation_id, uid, user_message):
         else:
             search_config = {"enable": True}
         payload['web_search'] = search_config
-        # 调试信息只在真正开启搜索时打印
         print('DEBUG payload web_search:', payload.get('web_search'))
         print('DEBUG config.web_search_enabled:', config.web_search_enabled)
         print('DEBUG model_cfg:', model_cfg)
 
-    # 10. 发送请求
     try:
         response = requests.post(
             f'{provider.base_url.rstrip("/")}/chat/completions',
