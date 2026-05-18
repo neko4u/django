@@ -18,6 +18,10 @@ import json
 from urllib.parse import quote
 import datetime
 
+
+#SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # BASE_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,6 +71,7 @@ INSTALLED_APPS = [
     'apps.frpServer',
     'apps.helpdocs',
     'apps.llm_chat',
+    'apps.llm_config',
 ]
 
 MIDDLEWARE = [
@@ -87,6 +92,7 @@ TEMPLATES = [
         'DIRS': [
             os.path.join(BASE_DIR, 'templates'),
             os.path.join(BASE_DIR, 'apps/login/templates'),
+            os.path.join(BASE_DIR, 'apps/llm_chat/templates'),
         ],
         'APP_DIRS': True,
         'OPTIONS': {

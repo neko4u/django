@@ -41,9 +41,8 @@ class Command(BaseCommand):
         for i in range(task.num):
             self.stdout.write(f"开始生成第 {i+1} 条评论")
             try:
-                # 调用你已有的函数  
                 result = ForumService.ad_create_comment(
-                    user=task.author,          # 评论作者
+                    user=task.author,
                     post_id=task.pid,
                     comment_type=1,
                     par_cid=None,

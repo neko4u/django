@@ -1,0 +1,42 @@
+{% load static %}
+<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM 任务监控</title>
+    <style>
+        body { background: #1e1e2e; color: #e0e0e0; font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; border-bottom: 1px solid #3e3e55; text-align: left; }
+        th { background: #2d2d3f; }
+    </style>
+</head>
+<body>
+    <h1>LLM 任务监控</h1>
+    <table id="tasks-table">
+        <thead>
+            <tr>
+                <th>ID</th><th>用户</th><th>对话</th><th>模型</th><th>状态</th><th>创建时间</th><th>错误信息</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+        async function loadTasks() {
+            const resp = await fetch('/chat/admin/tasks/data/');
+            const tasks = await resp.json();
+            const tbody = document.querySelector('#tasks-table tbody');
+            tbody.innerHTML = tasks.map(t => `
+                <tr>
+                    <td>${t.id}</td><td>${t.uid}</td><td>${t.conversation_id}</td>
+                    <td>${t.model_name}</td><td>${t.status}</td>
+                    <td>${t.created_at}</td><td>${t.error_message || ''}</td>
+                </tr>`).join('');
+        }
+        loadTasks();
+        setInterval(loadTasks, 5000);
+    </script>
+</body>
+</html>

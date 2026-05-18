@@ -18,6 +18,8 @@ from django.urls import path
 from apps.login import views as login_views
 from frpServer import views as frpServer_views
 from django.views.generic import RedirectView
+from django.urls import include
+from apps.llm_chat import views as chat_views
 # from django.views.static import serve
 # from django.conf import settings
 
@@ -54,6 +56,8 @@ urlpatterns = [
     path('api/update_token/', frpServer_views.api_frp_update_token, name='frp_api_update_token'),
     path('api/status/', frpServer_views.api_frp_status_json, name='frp_api_status'),
     path('api/FrpToken',frpServer_views.FrpToken,name='FrpToken'),
+    #llm_chat
+    path('chat/', include('apps.llm_chat.urls')),
     #default
     path('', RedirectView.as_view(url='/login/')),
 ]
