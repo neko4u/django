@@ -59,6 +59,7 @@ ALLOWED_HOSTS = config.get('allowed_hosts', [])
 
 
 # Application definition
+LOGIN_URL = '/login/'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -72,6 +73,7 @@ INSTALLED_APPS = [
     'apps.helpdocs',
     'apps.llm_chat',
     'apps.llm_config',
+    'apps.pointsBalanceSystem',
 ]
 
 MIDDLEWARE = [

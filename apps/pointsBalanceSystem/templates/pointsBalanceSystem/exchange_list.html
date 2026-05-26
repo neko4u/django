@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+{% load static %}
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        积分兑换中心
+    </title>
+
+    <link rel="stylesheet"
+          href="{% static 'pointsBalanceSystem/css/exchange_list.css' %}">
+
+</head>
+
+<body>
+
+<div class="exchange-container">
+
+    <!-- 顶部积分 -->
+    <div class="points-card">
+
+        <div class="points-title">
+            当前积分
+        </div>
+
+        <div class="points-value">
+            {{ points_balance }}
+        </div>
+
+    </div>
+
+    <!-- 消息提示 -->
+    {% if messages %}
+
+        <div class="message-area">
+
+            {% for message in messages %}
+
+                <div class="message message-{{ message.tags }}">
+
+                    <span>
+                        {{ message }}
+                    </span>
+
+                    <button class="message-close">
+                        ×
+                    </button>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+
+    <!-- 活动列表 -->
+    <div class="activity-grid">
+
+        {% for activity in activities %}
+
+            <div class="activity-card">
+
+                <div class="activity-header">
+
+                    <h2>
+                        {{ activity.name }}
+                    </h2>
+
+                </div>
+
+                <div class="activity-body">
+
+                    <p class="activity-desc">
+                        {{ activity.description }}
+                    </p>
+
+                    <div class="activity-info">
+
+                        <div class="info-item">
+
+                            <span class="label">
+                                消耗积分
+                            </span>
+
+                            <span class="value">
+                                {{ activity.points_required }}
+                            </span>
+
+                        </div>
+
+                        <div class="info-item">
+
+                            <span class="label">
+                                获得时长
+                            </span>
+
+                            <span class="value">
+                                {{ activity.reward_value }} 秒
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="activity-footer">
+
+                    <a href="{% url 'points:exchange_detail' %}?aid={{ activity.id }}"
+                       class="exchange-btn">
+
+                        立即兑换
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        {% empty %}
+
+            <div class="empty-card">
+
+                暂无兑换活动
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+<script src="{% static 'pointsBalanceSystem/js/exchange_list.js' %}"></script>
+
+</body>
+
+</html>

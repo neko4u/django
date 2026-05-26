@@ -56,6 +56,8 @@ urlpatterns = [
     path('api/update_token/', frpServer_views.api_frp_update_token, name='frp_api_update_token'),
     path('api/status/', frpServer_views.api_frp_status_json, name='frp_api_status'),
     path('api/FrpToken',frpServer_views.FrpToken,name='FrpToken'),
+    #pointsBalanceSystem
+    path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),
     #default

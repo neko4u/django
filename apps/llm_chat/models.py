@@ -46,9 +46,6 @@ class ConversationConfig(models.Model):
     frequency_penalty = models.FloatField(default=0.0)
     web_search_enabled = models.BooleanField(default=False, verbose_name='启用联网搜索')
 
-    class Meta:
-        db_table = 'conversation_config'
-
 class UserPermission(models.Model):
     uid = models.OneToOneField(
         'login.UserInfo',

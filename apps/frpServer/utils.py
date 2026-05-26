@@ -7,7 +7,6 @@ import os
 
 # ================= 配置常量 =================
 
-# 核心系统工具绝对路径 (请在终端通过 which sudo/systemctl 确认)
 SUDO_PATH = "/usr/bin/sudo"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
 
@@ -15,7 +14,7 @@ SYSTEMCTL_PATH = "/usr/bin/systemctl"
 FRP_PATH = "/frp/frp_0.65.0_linux_amd64"
 CONFIG_FILE = os.path.join(FRP_PATH, "frps.toml")
 
-# FRP API 配置 (用于获取实时流量状态)
+# FRP API 配置 (用于获取实时流量状态,以及后续其他功能)
 FRP_API_URL = "http://127.0.0.1:7500"
 FRP_ADMIN_USER = "admin"
 FRP_ADMIN_PWD = "admin123"
@@ -23,21 +22,16 @@ FRP_ADMIN_PWD = "admin123"
 # ================= 核心工具函数 =================
 
 def _run_frp_command(action):
-    """
-    内部封装：使用安全的方式执行 systemctl 操作
-    action: "start", "stop", "restart"
-    """
     if action not in ["start", "stop", "restart"]:
         return False, "非法的服务操作"
 
-    # 构造命令列表，不使用 shell=True 更加安全
     cmd = [SUDO_PATH, SYSTEMCTL_PATH, action, "frps"]
     
     try:
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # 将错误和正常输出合并
+            stderr=subprocess.STDOUT,
             encoding='utf-8',
             timeout=10
         )
@@ -54,13 +48,11 @@ def _run_frp_command(action):
 
 
 def read_config():
-    """读取 frps.toml 配置"""
     if not os.path.exists(CONFIG_FILE):
         return None, f"配置文件不存在: {CONFIG_FILE}"
     
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            # tomlkit 会保留原始文件的注释和格式
             data = tomlkit.load(f)
             return data, None
     except Exception as e:
@@ -68,7 +60,6 @@ def read_config():
 
 
 def update_frp_token():
-    """生成新 Token 并更新配置文件"""
     data, error = read_config()
     if error:
         return False, error

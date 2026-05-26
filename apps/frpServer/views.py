@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 @frp_permission_required()
 def frp_index(request):
-    """FRP 管理主页：初始载入"""
     config_data, config_err = utils.read_config()
     api_success, api_info = utils.get_frp_stats()
     context = {
@@ -64,7 +63,6 @@ def api_frp_update_token(request):
 
 @frp_permission_required()
 def api_frp_status_json(request):
-    """提供给前端 Ajax 定时刷新的接口"""
     api_success, api_info = utils.get_frp_stats()
     config_data, _ = utils.read_config()
     

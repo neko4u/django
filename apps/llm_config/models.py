@@ -12,7 +12,6 @@ class LLMProvider(models.Model):
     model_config = models.JSONField(default=dict, blank=True, verbose_name='模型详细配置')
 
     class Meta:
-        db_table = 'llm_provider'
         verbose_name = 'LLM提供商'
         verbose_name_plural = 'LLM提供商'
 
