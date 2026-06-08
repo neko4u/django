@@ -12,6 +12,8 @@ from .models import UserPermission, LLMTask
 from login.decorators import login_required_view
 from apps.llm_config.models import LLMProvider
 from django.views.decorators.http import require_GET
+from .tool_service import ToolManager
+from .models import Conversation
 
 
 @login_required_view
@@ -52,6 +54,7 @@ def send_message(request, conversation_id):
     try:
         body = json.loads(request.body.decode('utf-8'))
         user_message = body.get('message', '')
+        enable_tool_calls = body.get('enable_tool_calls', False)
     except Exception:
         return JsonResponse({'error': '请求格式错误'}, status=400)
     if not user_message:
@@ -60,10 +63,10 @@ def send_message(request, conversation_id):
 
     def event_stream():
         try:
-            for chunk in services.send_message_stream(conversation_id, uid, user_message):
+            for chunk in services.send_message_stream(conversation_id, uid, user_message,enable_tool_calls=enable_tool_calls):
                 yield f"data: {chunk}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'error': f'服务器内部错误: {str(e)}'})}\n\n"
+            yield f"data: {json.dumps({'error': f'服务器内部错误2: {str(e)}'})}\n\n"
 
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
@@ -79,7 +82,17 @@ def get_messages(request, conversation_id):
     msgs = services.get_messages(conversation_id, uid)
     if msgs is None:
         return JsonResponse({'error': '对话不存在'}, status=404)
-    data = [{'role': m.role, 'content': m.content, 'created_at': m.created_at.isoformat()} for m in msgs]
+    msgs = msgs.order_by('created_at')
+    try:
+        conv = Conversation.objects.get(id=conversation_id)
+        is_generating = conv.is_generating
+    except Conversation.DoesNotExist:
+        is_generating = False
+    data = {
+        'is_ok' : True,
+        'messages' : [{'role': m.role, 'content': m.content, 'created_at': m.created_at.isoformat()} for m in msgs],
+        'is_generating' : is_generating
+    }
     return JsonResponse(data, safe=False)
 
 
@@ -259,6 +272,8 @@ def get_models(request):
     for p in providers:
         for m in p.model_list:
             if not any(x['id'] == m for x in models):
+                model_cfg = p.model_config.get(m, {})
+                display_name = model_cfg.get('display_name', m)
                 models.append({'id': m, 'name': m})
     return JsonResponse(models, safe=False)
 
@@ -273,5 +288,20 @@ def web_search_check(request):
             if model_name in p.model_list:
                 model_cfg = p.model_config.get(model_name, {})
                 supported = model_cfg.get('web_search', False)
+                break
+    return JsonResponse({'supported': supported})
+
+
+@require_GET
+@login_required_api
+def tool_call_check(request):
+    model_name = request.GET.get('model_name', '')
+    supported = False
+    if model_name:
+        providers = LLMProvider.objects.filter(is_active=True)
+        for p in providers:
+            if model_name in p.model_list:
+                model_cfg = p.model_config.get(model_name, {})
+                supported = model_cfg.get('support_tool_calls', False)
                 break
     return JsonResponse({'supported': supported})

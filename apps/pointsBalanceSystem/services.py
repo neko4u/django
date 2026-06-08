@@ -88,7 +88,6 @@ class PointsExchangeService:
 
     def _do_exchange(self) -> PointExchangeRecord:
 
-        # 锁定积分账户
         user_point, created = (
             UserPoint.objects
             .select_for_update()
@@ -109,7 +108,6 @@ class PointsExchangeService:
         if user_point.points_balance < self.total_points:
             raise ValueError('积分不足')
 
-        # 锁定时长账户
         time_balance, _ = (
             UserTimeBalance.objects
             .select_for_update()
@@ -164,7 +162,7 @@ class PointsExchangeService:
         )
 
         if updated == 0:
-            raise DatabaseError('时长账户版本冲突')
+            raise DatabaseError('version校验失败,请重试')
 
         # 刷新余额
         user_point.refresh_from_db()
@@ -172,19 +170,12 @@ class PointsExchangeService:
 
         # 创建积分流水
         PointRecord.objects.create(
-
             user=self.user,
-
             direction=PointRecord.Direction.DEDUCTION,
-
             scene=PointRecord.Scene.EXCHANGE,
-
             amount=self.total_points,
-
             balance_after=user_point.points_balance,
-
             activity=self.activity,
-
             detail_json={
                 'reward_seconds': self.total_seconds,
                 'quantity': self.quantity

@@ -16,6 +16,7 @@ from openai import OpenAI
 from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
+from apps.pointsBalanceSystem.models import (UserPoint,PointRecord,PointExchangeActivity,PointExchangeRecord)
 
 logger = logging.getLogger(__name__)
 

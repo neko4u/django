@@ -26,6 +26,7 @@
 
         <main class="main-chat">
             <div id="chat-messages" class="chat-messages"></div>
+            <button id="scroll-to-bottom-btn" class="scroll-to-bottom-btn" title="回到底部">↓</button>
             <div class="chat-input-area">
                 <textarea id="user-input" rows="3" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"></textarea>
                 <button id="send-btn" class="btn-send">发送</button>
@@ -41,6 +42,10 @@
             <div class="params-content" id="params-content">
             </div>
         </aside>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
     </div>
 
     <script src="{% static 'llm_chat/js/chat.js' %}"></script>

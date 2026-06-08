@@ -2,6 +2,11 @@ let currentConversationId = null;
 let isStreaming = false;
 let abortController = null;
 let userPermissions = {};
+let activeStreamConversationId = null;
+let streamAbortControllers = {};
+let userScrolledUp = false;
+let scrollToBottomBtn = null;
+
 
 document.addEventListener('DOMContentLoaded', () => {
     checkPermissions();
@@ -31,7 +36,25 @@ function setupEventListeners() {
     document.getElementById('stop-btn').addEventListener('click', stopGeneration);
     document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
     document.getElementById('toggle-params').addEventListener('click', toggleParams);
+    scrollToBottomBtn = document.getElementById('scroll-to-bottom-btn');
 
+    if (scrollToBottomBtn) {
+        scrollToBottomBtn.addEventListener('click', () => {
+            const chatEl = document.getElementById('chat-messages');
+            chatEl.scrollTop = chatEl.scrollHeight;
+            userScrolledUp = false;
+            scrollToBottomBtn.style.display = 'none';
+        });
+    }
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.addEventListener('scroll', () => {
+        const threshold = 50; // 容差像素
+        const isAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
+        userScrolledUp = !isAtBottom;
+        if (scrollToBottomBtn) {
+            scrollToBottomBtn.style.display = userScrolledUp ? 'block' : 'none';
+        }
+    });
     const textarea = document.getElementById('user-input');
     textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -88,38 +111,68 @@ async function loadConversations() {
 }
 
 async function loadConversation(id) {
+    showLoading();
     currentConversationId = id;
     document.querySelectorAll('.conversation-item').forEach(el => el.classList.remove('active'));
     const activeItem = document.querySelector(`.conversation-item[data-id="${id}"]`);
     if (activeItem) activeItem.classList.add('active');
 
     const resp = await fetch(`/chat/${id}/messages/`);
-    const messages = await resp.json();
+    const data = await resp.json();
+    const messages = data.messages;
     const chatEl = document.getElementById('chat-messages');
     chatEl.innerHTML = '';
     messages.forEach(msg => addMessageToUI(msg.role, msg.content));
     chatEl.scrollTop = chatEl.scrollHeight;
 
+    userScrolledUp = false;
+    if (scrollToBottomBtn) scrollToBottomBtn.style.display = 'none';
+
+    if (data.is_generating) {
+        activeStreamConversationId = id;
+        addMessageToUI('assistant', '思考中...');
+    } else {
+        if (activeStreamConversationId === id) activeStreamConversationId = null;
+    }
+    updateSendButton();
+
     loadConfig(id);
+    hideLoading();
+}
+
+function updateSendButton() {
+    const sendBtn = document.getElementById('send-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    if (currentConversationId && activeStreamConversationId === currentConversationId) {
+        sendBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+    } else {
+        sendBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+    }
 }
 
 async function createNewConversation() {
+    showLoading();
     const resp = await fetch('/chat/new/', { method: 'POST' });
     const data = await resp.json();
     if (data.conversation_id) {
         await loadConversations();
         loadConversation(data.conversation_id);
     }
+    hideLoading();
 }
 
 async function deleteConversation(id) {
     if (!confirm('确定要删除这个对话吗？')) return;
+    showLoading();
     await fetch(`/chat/${id}/delete/`, { method: 'DELETE' });
     if (currentConversationId === id) {
         currentConversationId = null;
         document.getElementById('chat-messages').innerHTML = '';
     }
     loadConversations();
+    hideLoading();
 }
 
 async function renameConversation(id, titleElement) {
@@ -148,54 +201,60 @@ async function renameConversation(id, titleElement) {
 }
 
 async function sendMessage() {
-    if (isStreaming) return;
     const textarea = document.getElementById('user-input');
     const message = textarea.value.trim();
     if (!message) return;
+    
+    // 固化当前会话 ID，防止切换时污染
+    let sendingConversationId = currentConversationId;
 
-    if (!currentConversationId) {
+    // 如果目标会话正在生成，禁止重复发送
+    if (activeStreamConversationId === sendingConversationId) return;
+
+    // 若无会话，新建一个
+    if (!sendingConversationId) {
         const resp = await fetch('/chat/new/', { method: 'POST' });
         const data = await resp.json();
         if (!data.conversation_id) {
             alert('创建新对话失败，请刷新页面重试');
             return;
         }
-        currentConversationId = data.conversation_id;
+        sendingConversationId = data.conversation_id;
+        currentConversationId = sendingConversationId;
         await loadConversations();
         document.querySelectorAll('.conversation-item').forEach(el => el.classList.remove('active'));
-        const newItem = document.querySelector(`.conversation-item[data-id="${currentConversationId}"]`);
+        const newItem = document.querySelector(`.conversation-item[data-id="${sendingConversationId}"]`);
         if (newItem) newItem.classList.add('active');
     }
 
     textarea.value = '';
 
+    // 添加用户消息和占位 assistant 消息
     addMessageToUI('user', message);
+    addMessageToUI('assistant', '思考中...');
+    const chatEl = document.getElementById('chat-messages');
+    chatEl.scrollTop = chatEl.scrollHeight;
 
-    const assistantMsgDiv = addMessageToUI('assistant', '');
-    assistantMsgDiv.innerHTML = '<div class="content"><span class="thinking">思考中...</span></div>';
+    userScrolledUp = false;
+    // 标记该会话为生成中
+    activeStreamConversationId = sendingConversationId;
+    updateSendButton();
 
-    isStreaming = true;
-    document.getElementById('send-btn').style.display = 'none';
-    document.getElementById('stop-btn').style.display = 'inline-block';
+    const abortController = new AbortController();
+    streamAbortControllers[sendingConversationId] = abortController;
 
-    abortController = new AbortController();
     let assistantContent = '';
+    const toolCallEnabled = document.getElementById('tool-call-toggle')?.checked || false;
 
     try {
-        const response = await fetch(`/chat/${currentConversationId}/send/`, {
+        const response = await fetch(`/chat/${sendingConversationId}/send/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: message }),
+            body: JSON.stringify({ message: message, enable_tool_calls: toolCallEnabled }),
             signal: abortController.signal,
         });
 
-        if (!response.ok) {
-            isStreaming = false;
-            document.getElementById('send-btn').style.display = 'inline-block';
-            document.getElementById('stop-btn').style.display = 'none';
-            assistantMsgDiv.innerHTML = '<div class="content" style="color:var(--danger);">请求失败，请重试</div>';
-            return;
-        }
+        if (!response.ok) throw new Error('请求失败');
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -212,48 +271,88 @@ async function sendMessage() {
                     const jsonStr = line.slice(6);
                     try {
                         const data = JSON.parse(jsonStr);
+                        // 错误处理
                         if (data.error) {
-                            assistantMsgDiv.innerHTML = `<div class="content" style="color:var(--danger);">${escapeHtml(data.error)}</div>`;
+                            if (currentConversationId === sendingConversationId) {
+                                const chatEl = document.getElementById('chat-messages');
+                                const lastAssistant = chatEl.querySelector('.message.assistant:last-child .content');
+                                if (lastAssistant) lastAssistant.innerHTML = `<span style="color:var(--danger);">${escapeHtml(data.error)}</span>`;
+                                if (!userScrolledUp) {
+                                    chatEl.scrollTop = chatEl.scrollHeight;
+                                }
+                            }
+                            throw new Error(data.error);
+                        }
+                        // 用户停止
+                        if (data.stopped) {
+                            if (currentConversationId === sendingConversationId) {
+                                const chatEl = document.getElementById('chat-messages');
+                                const lastAssistant = chatEl.querySelector('.message.assistant:last-child .content');
+                                if (lastAssistant) lastAssistant.innerHTML += '<br><span style="color:var(--danger);">已停止生成</span>';
+                            }
                             break;
                         }
-                        if (data.stopped) break;
+                        // 正常内容流
                         if (data.content) {
                             assistantContent += data.content;
-                            assistantMsgDiv.innerHTML = `<div class="content">${marked.parse(assistantContent)}</div>`;
-                            document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                            // 仅当用户正在查看该会话时才更新 UI
+                            if (currentConversationId === sendingConversationId) {
+                                const chatEl = document.getElementById('chat-messages');
+                                const lastAssistant = chatEl.querySelector('.message.assistant:last-child .content');
+                                if (lastAssistant) {
+                                    lastAssistant.innerHTML = marked.parse(assistantContent);
+                                    document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                                    if (!userScrolledUp) {
+                                        chatEl.scrollTop = chatEl.scrollHeight;
+                                    }
+                                }
+                            }
                         }
+                        // 需要自动生成标题
                         if (data.need_title) {
-                            generateTitle(currentConversationId);
+                            generateTitle(sendingConversationId);
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        // 忽略 JSON 解析错误或内部抛出的中断信号
+                    }
                 }
             }
-            const chatEl = document.getElementById('chat-messages');
-            chatEl.scrollTop = chatEl.scrollHeight;
         }
     } catch (err) {
-        if (err.name !== 'AbortError') {
-            console.error(err);
-            assistantMsgDiv.innerHTML = '<div class="content" style="color:var(--danger);">网络错误，请重试</div>';
+        // 网络错误或请求中断
+        if (err.name !== 'AbortError' && currentConversationId === sendingConversationId) {
+            const chatEl = document.getElementById('chat-messages');
+            const lastAssistant = chatEl.querySelector('.message.assistant:last-child .content');
+            if (lastAssistant) lastAssistant.innerHTML = '<span style="color:var(--danger);">网络错误，请重试</span>';
         }
     } finally {
-        isStreaming = false;
-        document.getElementById('send-btn').style.display = 'inline-block';
-        document.getElementById('stop-btn').style.display = 'none';
-        abortController = null;
+        // 清理状态，使用固化的会话 ID
+        delete streamAbortControllers[sendingConversationId];
+        if (activeStreamConversationId === sendingConversationId) {
+            activeStreamConversationId = null;
+        }
+        updateSendButton();
     }
 }
 
 async function stopGeneration() {
-    if (abortController) abortController.abort();
+    const convoId = currentConversationId;
+    if (!convoId) return;
+
+    if (streamAbortControllers[convoId]) {
+        streamAbortControllers[convoId].abort();
+        delete streamAbortControllers[convoId];
+    }
+
     await fetch('/chat/stop/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversation_id: currentConversationId }),
     });
-    isStreaming = false;
-    document.getElementById('send-btn').style.display = 'inline-block';
-    document.getElementById('stop-btn').style.display = 'none';
+    if (activeStreamConversationId === convoId) {
+        activeStreamConversationId = null;
+    }
+    updateSendButton();
 }
 
 async function generateTitle(conversationId) {
@@ -284,6 +383,7 @@ async function loadConfig(conversationId) {
         webSearchToggle.checked = config.web_search_enabled || false;
     }
     updateWebSearchToggle();
+    updateToolCallToggle();
 }
 
 async function saveConfig() {
@@ -293,7 +393,7 @@ async function saveConfig() {
     const payload = {
         model_name: getVal('model-select'),
         temperature: parseFloat(getVal('temperature')),
-        max_tokens: parseInt(getVal('max_tokens')),
+        max_tokens: parseInt(getVal('max_tokens')) || 102400,
         top_p: parseFloat(getVal('top_p')),
         presence_penalty: parseFloat(getVal('presence_penalty')),
         frequency_penalty: parseFloat(getVal('frequency_penalty')),
@@ -360,6 +460,14 @@ async function buildParamsPanel() {
                 <span id="web-search-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
             </div>
         </div>
+        <div class="param-group">
+            <label>高级功能 (Tool Calls)</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="tool-call-toggle" disabled>
+                <label for="tool-call-toggle" class="toggle-label"></label>
+                <span id="tool-call-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
+            </div>
+        </div>
         <button onclick="saveConfig()" class="btn-save">保存配置</button>
     `;
 
@@ -376,6 +484,7 @@ async function buildParamsPanel() {
     const modelSelect = document.getElementById('model-select');
     if (modelSelect) {
         modelSelect.addEventListener('change', updateWebSearchToggle);
+        modelSelect.addEventListener('change', updateToolCallToggle);
     }
     updateWebSearchToggle();
 }
@@ -408,6 +517,35 @@ async function updateWebSearchToggle() {
     }
 }
 
+async function updateToolCallToggle() {
+    const model = document.getElementById('model-select')?.value;
+    const toggle = document.getElementById('tool-call-toggle');
+    const statusSpan = document.getElementById('tool-call-status');
+    if (!model || !toggle) return;
+
+    try {
+        const resp = await fetch(`/chat/tool_call_check/?model_name=${encodeURIComponent(model)}`);
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.supported) {
+                toggle.disabled = false;
+                statusSpan.textContent = '可用';
+                statusSpan.style.color = 'var(--accent)';
+            } else {
+                toggle.disabled = true;
+                toggle.checked = false;
+                statusSpan.textContent = '不支持';
+                statusSpan.style.color = 'var(--text-secondary)';
+            }
+        }
+    } catch (e) {
+        toggle.disabled = true;
+        statusSpan.textContent = '检查失败';
+        statusSpan.style.color = 'var(--danger)';
+    }
+}
+
+
 function addMessageToUI(role, content) {
     const chatEl = document.getElementById('chat-messages');
     const msgDiv = document.createElement('div');
@@ -421,7 +559,7 @@ function addMessageToUI(role, content) {
     if (role === 'assistant') {
         document.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
     }
-    chatEl.scrollTop = chatEl.scrollHeight;
+    // chatEl.scrollTop = chatEl.scrollHeight;
     return msgDiv;
 }
 
@@ -440,4 +578,13 @@ function formatDate(isoString) {
     if (!isoString) return '';
     const date = new Date(isoString);
     return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function showLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+function hideLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
 }

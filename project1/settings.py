@@ -244,6 +244,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'apps.llm_chat': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     }
 }
 

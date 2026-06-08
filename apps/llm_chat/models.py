@@ -10,9 +10,9 @@ class Conversation(models.Model):
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_generating = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'conversation'
         ordering = ['-updated_at']
 
 class Message(models.Model):
@@ -26,11 +26,13 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     model_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='生成模型')
     reasoning_content = models.TextField(blank=True, default='', verbose_name='思考内容')
+    prompt_tokens = models.IntegerField(default=0, verbose_name='提示词 token 数')
+    completion_tokens = models.IntegerField(default=0, verbose_name='回答 token 数')
+    total_tokens = models.IntegerField(default=0, verbose_name='总 token 数')
     
 
     class Meta:
-        db_table = 'message'
-        ordering = ['created_at']
+        ordering = ['-created_at']
 
 class ConversationConfig(models.Model):
     conversation = models.OneToOneField(
