@@ -24,6 +24,10 @@ class ToolDefinition(models.Model):
         ('internal', '内部函数'),
         ('external', '外部API'),
     ]
+    TOOL_CATEGORY_CHOICES = [
+        (0, '普通工具'),
+        (1, 'Tavily 搜索'),
+    ]
     name = models.CharField(max_length=100, unique=True, verbose_name='工具标识')
     display_name = models.CharField(max_length=100, verbose_name='显示名称')
     description = models.TextField(verbose_name='功能描述')
@@ -35,6 +39,11 @@ class ToolDefinition(models.Model):
         verbose_name='工具类型'
     )
     is_active = models.BooleanField(default=True, verbose_name='是否启用')
+    category = models.IntegerField(
+        choices=TOOL_CATEGORY_CHOICES,
+        default=0,
+        verbose_name='工具分类'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

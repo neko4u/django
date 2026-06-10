@@ -37,12 +37,9 @@ def tavily_search(query: str, max_results: int = 5, **kwargs) -> dict:
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Tavily 搜索请求失败: {str(e)}")
     return response.json()
-    response.raise_for_status()
-    return response.json()
 
 
 class ToolManager:
-    # 工具注册表：名称 -> 定义 + 执行函数
     TOOLS_REGISTRY = {
         "tavily_search": {
             "definition": {
@@ -53,35 +50,58 @@ class ToolManager:
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "搜索关键词"
-                            },
-                            "max_results": {
-                                "type": "integer",
-                                "description": "返回结果数量，默认5",
-                                "default": 5
-                            }
+                            "query": {"type": "string", "description": "搜索关键词"},
+                            "max_results": {"type": "integer", "description": "返回结果数量，默认5", "default": 5}
                         },
                         "required": ["query"],
                         "additionalProperties": False
                     },
-                    "strict": True
                 }
             },
             "executor": tavily_search,
+            "category": 1,
         }
     }
 
     @classmethod
     def get_tools_for_model(cls, model_name=None) -> List[dict]:
-        """返回所有已注册的工具定义（未来可扩展按模型过滤）"""
-        return [tool['definition'] for tool in cls.TOOLS_REGISTRY.values()]
+        tools = []
+        for name, info in cls.TOOLS_REGISTRY.items():
+            tool_dict = {
+                **info['definition'],
+                "category": info.get('category', 0),
+            }
+            tools.append(tool_dict)
+        return tools
 
     @classmethod
     def execute_tool(cls, function_name: str, arguments: dict) -> dict:
-        """执行指定工具，arguments 由 LLM 传入"""
         tool = cls.TOOLS_REGISTRY.get(function_name)
         if not tool:
+            # 尝试 InternalToolService
+            from . import InternalToolService
+            func = getattr(InternalToolService, function_name, None)
+            if callable(func):
+                return func(**arguments)
             raise ValueError(f"未注册的工具: {function_name}")
-        return tool["executor"](**arguments)
+        executor = tool["executor"]
+        if callable(executor):
+            return executor(**arguments)
+        elif isinstance(executor, str):
+            func = globals().get(executor)
+            if callable(func):
+                return func(**arguments)
+        raise RuntimeError(f"工具 {function_name} 的执行函数无法调用")
+
+    # @classmethod
+    # def get_tools_for_model(cls, model_name=None) -> List[dict]:
+    #     """返回所有已注册的工具定义（未来可扩展按模型过滤）"""
+    #     return [tool['definition'] for tool in cls.TOOLS_REGISTRY.values()]
+
+    # @classmethod
+    # def execute_tool(cls, function_name: str, arguments: dict) -> dict:
+    #     """执行指定工具，arguments 由 LLM 传入"""
+    #     tool = cls.TOOLS_REGISTRY.get(function_name)
+    #     if not tool:
+    #         raise ValueError(f"未注册的工具: {function_name}")
+    #     return tool["executor"](**arguments)

@@ -47,6 +47,8 @@ class ConversationConfig(models.Model):
     presence_penalty = models.FloatField(default=0.0)
     frequency_penalty = models.FloatField(default=0.0)
     web_search_enabled = models.BooleanField(default=False, verbose_name='启用联网搜索')
+    tavily_search_enabled = models.BooleanField(default=False, verbose_name='启用Tavily搜索')
+    tools_enabled = models.BooleanField(default=False, verbose_name='启用tools')
 
 class UserPermission(models.Model):
     uid = models.OneToOneField(

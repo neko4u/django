@@ -18,5 +18,7 @@ urlpatterns = [
     path('permissions/', views.get_permissions, name='chat_permissions'),
     path('models/', views.get_models, name='chat_models'),
     path('web_search_check/', views.web_search_check, name='web_search_check'),
+    path('tavily_search_check/', views.tavily_search_check, name='tavily_search_check'),
+    path('tool_calls_check/', views.tool_calls_check, name='tool_calls_check'),
     path('tool_call_check/', views.tool_call_check, name='tool_call_check'),
 ]

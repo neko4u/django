@@ -244,8 +244,7 @@ async function sendMessage() {
     streamAbortControllers[sendingConversationId] = abortController;
 
     let assistantContent = '';
-    const toolCallEnabled = document.getElementById('tool-call-toggle')?.checked || false;
-
+    const toolCallEnabled = document.getElementById('tool-calls-toggle')?.checked || false;
     try {
         const response = await fetch(`/chat/${sendingConversationId}/send/`, {
             method: 'POST',
@@ -382,14 +381,22 @@ async function loadConfig(conversationId) {
     if (webSearchToggle) {
         webSearchToggle.checked = config.web_search_enabled || false;
     }
+    const tavilySearchToggle = document.getElementById('tavily-search-toggle');
+    if (tavilySearchToggle) {
+        tavilySearchToggle.checked = config.tavily_search_enabled || false;
+    }
+    const toolCallsToggle = document.getElementById('tool-calls-toggle');
+    if (toolCallsToggle) {
+        toolCallsToggle.checked = config.tools_enabled || false;
+    }
     updateWebSearchToggle();
-    updateToolCallToggle();
+    updateTavilySearchToggle();
+    updateToolCallsToggle();
 }
 
 async function saveConfig() {
     if (!currentConversationId) return;
     const getVal = (id) => document.getElementById(id).value;
-    const webSearchToggle = document.getElementById('web-search-toggle');
     const payload = {
         model_name: getVal('model-select'),
         temperature: parseFloat(getVal('temperature')),
@@ -397,7 +404,9 @@ async function saveConfig() {
         top_p: parseFloat(getVal('top_p')),
         presence_penalty: parseFloat(getVal('presence_penalty')),
         frequency_penalty: parseFloat(getVal('frequency_penalty')),
-        web_search_enabled: webSearchToggle ? webSearchToggle.checked : false,
+        web_search_enabled: document.getElementById('web-search-toggle')?.checked || false,
+        tavily_search_enabled: document.getElementById('tavily-search-toggle')?.checked || false,
+        tools_enabled: document.getElementById('tool-calls-toggle')?.checked || false,
     };
     await fetch(`/chat/${currentConversationId}/config/update/`, {
         method: 'POST',
@@ -453,19 +462,23 @@ async function buildParamsPanel() {
             <span class="range-value" id="frequency_penalty-value">0.0</span>
         </div>
         <div class="param-group">
-            <label>联网搜索</label>
+            <label>原生联网搜索</label>
             <div class="toggle-switch">
                 <input type="checkbox" id="web-search-toggle" disabled>
                 <label for="web-search-toggle" class="toggle-label"></label>
                 <span id="web-search-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
             </div>
-        </div>
-        <div class="param-group">
-            <label>高级功能 (Tool Calls)</label>
+            <label>T联网搜索</label>
             <div class="toggle-switch">
-                <input type="checkbox" id="tool-call-toggle" disabled>
-                <label for="tool-call-toggle" class="toggle-label"></label>
-                <span id="tool-call-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
+                <input type="checkbox" id="tavily-search-toggle" disabled>
+                <label for="tavily-search-toggle" class="toggle-label"></label>
+                <span id="tavily-search-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
+            </div>
+            <label>高级功能</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="tool-calls-toggle" disabled>
+                <label for="tool-calls-toggle" class="toggle-label"></label>
+                <span id="tool-calls-status" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);"></span>
             </div>
         </div>
         <button onclick="saveConfig()" class="btn-save">保存配置</button>
@@ -485,6 +498,8 @@ async function buildParamsPanel() {
     if (modelSelect) {
         modelSelect.addEventListener('change', updateWebSearchToggle);
         modelSelect.addEventListener('change', updateToolCallToggle);
+        modelSelect.addEventListener('change', updateTavilySearchToggle); 
+        modelSelect.addEventListener('change', updateToolCallsToggle); 
     }
     updateWebSearchToggle();
 }
@@ -497,6 +512,63 @@ async function updateWebSearchToggle() {
 
     try {
         const resp = await fetch(`/chat/web_search_check/?model_name=${encodeURIComponent(model)}`);
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.supported) {
+                toggle.disabled = false;
+                statusSpan.textContent = '可用';
+                statusSpan.style.color = 'var(--accent)';
+            } else {
+                toggle.disabled = true;
+                toggle.checked = false;
+                statusSpan.textContent = '不支持';
+                statusSpan.style.color = 'var(--text-secondary)';
+            }
+        }
+    } catch (e) {
+        toggle.disabled = true;
+        statusSpan.textContent = '检查失败';
+        statusSpan.style.color = 'var(--danger)';
+    }
+}
+
+async function updateTavilySearchToggle() {
+    const model = document.getElementById('model-select')?.value;
+    const toggle = document.getElementById('tavily-search-toggle');
+    const statusSpan = document.getElementById('tavily-search-status');
+    if (!model || !toggle) return;
+
+    try {
+        const resp = await fetch(`/chat/tavily_search_check/?model_name=${encodeURIComponent(model)}`);
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.supported) {
+                toggle.disabled = false;
+                statusSpan.textContent = '可用';
+                statusSpan.style.color = 'var(--accent)';
+            } else {
+                toggle.disabled = true;
+                toggle.checked = false;
+                statusSpan.textContent = '不支持';
+                statusSpan.style.color = 'var(--text-secondary)';
+            }
+        }
+    } catch (e) {
+        toggle.disabled = true;
+        statusSpan.textContent = '检查失败';
+        statusSpan.style.color = 'var(--danger)';
+    }
+}
+
+
+async function updateToolCallsToggle() {
+    const model = document.getElementById('model-select')?.value;
+    const toggle = document.getElementById('tool-calls-toggle');
+    const statusSpan = document.getElementById('tool-calls-status');
+    if (!model || !toggle) return;
+
+    try {
+        const resp = await fetch(`/chat/tool_calls_check/?model_name=${encodeURIComponent(model)}`);
         if (resp.ok) {
             const data = await resp.json();
             if (data.supported) {

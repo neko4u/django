@@ -291,6 +291,34 @@ def web_search_check(request):
                 break
     return JsonResponse({'supported': supported})
 
+@login_required_api
+def tavily_search_check(request):
+    model_name = request.GET.get('model_name', '')
+    supported = False
+    if model_name:
+        from apps.llm_config.models import LLMProvider
+        providers = LLMProvider.objects.filter(is_active=True)
+        for p in providers:
+            if model_name in p.model_list:
+                model_cfg = p.model_config.get(model_name, {})
+                supported = model_cfg.get('tavily_search', False)
+                break
+    return JsonResponse({'supported': supported})
+
+@login_required_api
+def tool_calls_check(request):
+    model_name = request.GET.get('model_name', '')
+    supported = False
+    if model_name:
+        from apps.llm_config.models import LLMProvider
+        providers = LLMProvider.objects.filter(is_active=True)
+        for p in providers:
+            if model_name in p.model_list:
+                model_cfg = p.model_config.get(model_name, {})
+                supported = model_cfg.get('tool_calls', False)
+                break
+    return JsonResponse({'supported': supported})
+
 
 @require_GET
 @login_required_api
