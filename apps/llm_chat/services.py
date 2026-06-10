@@ -495,6 +495,7 @@ def generate_title(conversation_id, uid):
         payload = {
             'model': title_model,
             'messages': [
+                {'role': 'system', 'content': '你是一个标题生成器。只输出标题文本，不要任何解释、标点或额外字符。'},
                 {'role': 'user', 'content': f'用不超过15个字给以下对话生成一个简短的标题："{first_msg.content}"'}
             ],
             'max_tokens': 20,

@@ -175,6 +175,10 @@ def update_config(request, conversation_id):
             update_data[field] = body[field]
     if 'web_search_enabled' in body:
         update_data['web_search_enabled'] = body['web_search_enabled']
+    if 'tavily_search_enabled' in body:
+        update_data['tavily_search_enabled'] = body['tavily_search_enabled']
+    if 'tools_enabled' in body:
+        update_data['tools_enabled'] = body['tools_enabled']
     if 'model_name' in body:
         update_data['model_name'] = body['model_name']
 
