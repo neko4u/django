@@ -7,22 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
         panel.classList.toggle('active');
     }
 
-    // 绑定头像点击事件 (推荐用事件委托代替onclick属性)
     avatar.addEventListener('click', toggleUserPanel);
 
-    // 全局点击监听（修复版）
     document.addEventListener('click', function(event) {
         if (!panel || !avatar) return;
-        
+
         const isClickOnPanel = panel.contains(event.target);
         const isClickOnAvatar = event.target === avatar || avatar.contains(event.target);
-        
+
         if (!isClickOnPanel && !isClickOnAvatar) {
             panel.classList.remove('active');
         }
     });
 
-    // 阻止面板点击冒泡（修复版）
     if (panel) {
         panel.addEventListener('click', function(event) {
             event.stopPropagation();
@@ -38,18 +35,18 @@ function switchNav(e){
         for (let i = 0; i < navItems.length; i++) {
             navItems[i].style.display =  "none";
         }
-        containerGrid.style.gridTemplateColumns = "4% 96%";
+        containerGrid.style.gridTemplateColumns = "40px 1fr";
         setTimeout(function() {
             switchButtonImg.src = "/media/urls/base/openNav.png";
-        }, 400);
+        }, 350);
     }
     else {
-        containerGrid.style.gridTemplateColumns = "7% 93%";
+        containerGrid.style.gridTemplateColumns = "200px 1fr";
         setTimeout(function() {
             for (let i = 0; i < navItems.length; i++) {
                 navItems[i].style.display =  "block";
             }
             switchButtonImg.src = "/media/urls/base/hideNav.png";
-        },400);
+        },350);
     }
 }

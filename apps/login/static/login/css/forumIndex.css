@@ -1,0 +1,118 @@
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f8ff;
+    --bg-tertiary: #e8f0fe;
+    --text-primary: #1a1a2e;
+    --text-secondary: #5f6b7a;
+    --accent: #2b7de9;
+    --accent-light: #e8f1fe;
+    --danger: #e5534b;
+    --border: #d0d7e2;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+.forum-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.forum-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.forum-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.forum-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.forum-item {
+    background: var(--bg-primary);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    transition: box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.forum-item:hover {
+    box-shadow: var(--shadow);
+    border-color: var(--accent-light);
+}
+
+.forum-item-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.forum-item-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.forum-item-desc {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.btn-new-post {
+    padding: 8px 18px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-new-post:hover {
+    background: #1a6ad4;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .forum-container {
+        padding: 16px;
+    }
+
+    .forum-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .forum-item {
+        padding: 14px;
+    }
+}

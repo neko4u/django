@@ -1,143 +1,202 @@
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f8ff;
+    --bg-tertiary: #e8f0fe;
+    --text-primary: #1a1a2e;
+    --text-secondary: #5f6b7a;
+    --accent: #2b7de9;
+    --accent-light: #e8f1fe;
+    --danger: #e5534b;
+    --success: #22c55e;
+    --border: #d0d7e2;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
 * {
     box-sizing: border-box;
 }
 
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
 .exchange-container {
-    width: 1200px;
+    width: 1100px;
     max-width: 95%;
-    margin: 40px auto;
+    margin: 32px auto;
 }
 
 .points-card {
-    background: linear-gradient(135deg, #5b86ff, #7f5eff);
+    background: var(--accent);
     color: white;
-    padding: 30px;
-    border-radius: 18px;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.1);
+    padding: 28px 32px;
+    border-radius: 14px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 16px rgba(43, 125, 233, 0.2);
 }
 
 .points-title {
-    font-size: 18px;
-    opacity: .9;
+    font-size: 0.95rem;
+    opacity: 0.9;
 }
 
 .points-value {
-    margin-top: 10px;
-    font-size: 42px;
-    font-weight: bold;
+    margin-top: 8px;
+    font-size: 38px;
+    font-weight: 700;
 }
 
 .activity-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill,minmax(320px,1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
 }
 
 .activity-card {
-    background: white;
-    border-radius: 18px;
+    background: var(--bg-primary);
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 5px 20px rgba(0,0,0,.08);
-    transition: .3s;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border);
+    transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .activity-card:hover {
-    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-3px);
 }
 
 .activity-header {
-    padding: 25px;
-    border-bottom: 1px solid #eee;
+    padding: 22px;
+    border-bottom: 1px solid var(--border);
 }
 
 .activity-header h2 {
     margin: 0;
-    font-size: 24px;
+    font-size: 1.2rem;
+    color: var(--text-primary);
 }
 
 .activity-body {
-    padding: 25px;
+    padding: 22px;
 }
 
 .activity-desc {
-    color: #666;
-    line-height: 1.7;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 0.9rem;
 }
 
 .activity-info {
-    margin-top: 20px;
+    margin-top: 18px;
 }
 
 .info-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
 }
 
 .label {
-    color: #888;
+    color: var(--text-secondary);
 }
 
 .value {
-    font-weight: bold;
-    color: #5b86ff;
+    font-weight: 600;
+    color: var(--accent);
 }
 
 .activity-footer {
-    padding: 25px;
+    padding: 22px;
+    border-top: 1px solid var(--border);
 }
 
 .exchange-btn {
     display: block;
     width: 100%;
     text-align: center;
-    padding: 14px;
-    border-radius: 12px;
-    background: #5b86ff;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--accent);
     color: white;
     text-decoration: none;
-    transition: .3s;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .exchange-btn:hover {
-    background: #436ef0;
+    background: #1a6ad4;
 }
 
 .message-area {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
 .message {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-bottom: 15px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 12px;
     color: white;
+    font-size: 0.9rem;
 }
 
 .message-success {
-    background: #22c55e;
+    background: var(--success);
 }
 
 .message-error {
-    background: #ef4444;
+    background: var(--danger);
 }
 
 .message-close {
     border: none;
     background: none;
     color: white;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
 }
 
 .empty-card {
-    background: white;
+    background: var(--bg-primary);
     padding: 50px;
-    border-radius: 18px;
+    border-radius: 14px;
     text-align: center;
-    color: #999;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    grid-column: 1 / -1;
+}
+
+/* ====== 移动端适配 ====== */
+@media (max-width: 768px) {
+    .exchange-container {
+        margin: 16px auto;
+    }
+
+    .points-card {
+        padding: 20px 24px;
+    }
+
+    .points-value {
+        font-size: 30px;
+    }
+
+    .activity-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .activity-header,
+    .activity-body,
+    .activity-footer {
+        padding: 16px;
+    }
 }

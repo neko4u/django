@@ -1,174 +1,190 @@
-/* 全局样式 */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f8ff;
+    --bg-tertiary: #e8f0fe;
+    --text-primary: #1a1a2e;
+    --text-secondary: #5f6b7a;
+    --accent: #2b7de9;
+    --accent-light: #e8f1fe;
+    --danger: #e5534b;
+    --border: #d0d7e2;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
 body {
     margin: 0;
     padding: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
-    font-family: 'Arial', sans-serif;
+    min-height: 100vh;
+    background: var(--bg-secondary);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--text-primary);
 }
 
-/* 登录表单容器 */
+/* ====== 登录 ====== */
 .login-container {
-    background: white;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    width: 350px;
+    background: var(--bg-primary);
+    padding: 2.5rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    width: 380px;
+    max-width: 92vw;
     text-align: center;
 }
 
-/* 表单标题 */
 .login-container h1 {
     margin-bottom: 1.5rem;
-    color: #333;
-    font-size: 1.8rem;
+    color: var(--text-primary);
+    font-size: 1.6rem;
+    font-weight: 600;
 }
 
-/* 输入框样式 */
 .login-container input[type="text"],
 .login-container input[type="password"] {
     width: 100%;
-    padding: 0.8rem;
-    margin: 0.5rem 0;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1rem;
+    padding: 0.75rem;
+    margin: 0.4rem 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: border 0.2s, box-shadow 0.2s;
 }
 
-/* 聚焦时的输入框样式 */
 .login-container input[type="text"]:focus,
 .login-container input[type="password"]:focus {
-    border-color: #6e8efb;
+    border-color: var(--accent);
     outline: none;
-    box-shadow: 0 0 5px rgba(110, 142, 251, 0.5);
+    box-shadow: 0 0 0 3px rgba(43, 125, 233, 0.15);
 }
 
-/* 按钮样式 */
 .login-container button {
     width: 100%;
-    padding: 0.8rem;
-    background: #6e8efb;
+    padding: 0.75rem;
+    background: var(--accent);
     color: white;
     border: none;
-    border-radius: 5px;
-    font-size: 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: background 0.3s, transform 0.2s;
+    transition: background 0.2s;
+    font-weight: 500;
 }
 
-/* 按钮悬停样式 */
 .login-container button:hover {
-    background: #5671d6;
-    transform: scale(1.05);
+    background: #1a6ad4;
 }
 
-/* 按钮按下样式 */
-.login-container button:active {
-    transform: scale(0.95);
-}
-
-/* 链接样式 */
 .login-container a {
     display: block;
     margin-top: 1rem;
-    color: #6e8efb;
+    color: var(--accent);
     text-decoration: none;
+    font-size: 0.9rem;
 }
 
 .login-container a:hover {
     text-decoration: underline;
 }
 
-
-/* ======================register=========================== */
-
-/* 登录和注册容器 */
+/* ====== 注册 ====== */
 .register-container {
-    background: white;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    width: 350px;
+    background: var(--bg-primary);
+    padding: 2.5rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    width: 380px;
+    max-width: 92vw;
     text-align: center;
 }
 
-/* 标题 */
 .register-container h2 {
     text-align: center;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 20px;
+    font-size: 1.4rem;
+    font-weight: 600;
 }
 
-/* 输入框与标签 */
 .form-group {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 15px;
+    margin-bottom: 14px;
     align-items: center;
 }
 
 .register-container label {
     padding-right: 5px;
-    font-size: 16px;
-    color: #333;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
     width: 30%;
+    text-align: left;
 }
 
-/* 注册表单的单行布局 */
 .register-container div {
     display: flex;
-    align-items: center; /* 确保标签和输入框垂直居中 */
-    margin-bottom: 15px; /* 每个字段之间的间距 */
+    align-items: center;
+    margin-bottom: 14px;
 }
 
-/* 设置标签的宽度，使其对齐 */
 .register-container label {
-    flex-shrink: 0;  /* 禁止缩小 */
-    width: 100px; /* 固定宽度，可以根据需要调整 */
-    margin-right: 15px; /* 标签和输入框之间的间距 */
-    font-size: 16px;
-    color: #333;
+    flex-shrink: 0;
+    width: 90px;
+    margin-right: 12px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: left;
 }
 
-/* 输入框的样式 */
-.register-container input[type="text"], 
-.register-container input[type="email"], 
+.register-container input[type="text"],
+.register-container input[type="email"],
 .register-container input[type="password"] {
-    flex-grow: 1; /* 输入框占据剩余空间 */
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
+    flex-grow: 1;
+    padding: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: border 0.2s;
 }
 
-/* 提交按钮 */
+.register-container input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(43, 125, 233, 0.15);
+}
+
 button[type="submit"] {
     width: 100%;
-    padding: 12px;
-    background-color: #4CAF50;
+    padding: 0.7rem;
+    background: var(--accent);
     color: white;
-    font-size: 18px;
+    font-size: 0.95rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-top: 10px;
+    margin-top: 8px;
+    font-weight: 500;
+    transition: background 0.2s;
 }
 
 button[type="submit"]:hover {
-    background-color: #45a049;
+    background: #1a6ad4;
 }
 
-/* 其他链接样式 */
 .text-center {
     text-align: center;
+    margin-top: 12px;
 }
 
 .text-center a {
-    color: #4CAF50;
+    color: var(--accent);
     text-decoration: none;
+    font-size: 0.9rem;
 }
 
 .text-center a:hover {
@@ -176,15 +192,39 @@ button[type="submit"]:hover {
 }
 
 .register-container span {
-    display: block;          /* 让错误信息显示为块级元素 */
-    margin-top: 5px;         /* 错误信息和输入框之间的间距 */
-    color: #d9534f;          /* 设置错误信息的字体颜色，通常使用红色 */
-    font-size: 14px;         /* 设置适当的字体大小 */
-    font-weight: bold;       /* 可以加粗字体来突出显示 */
-    line-height: 1.5;        /* 设置适当的行高 */
+    display: block;
+    margin-top: 4px;
+    color: var(--danger);
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.4;
 }
 
+/* 移动端适配 */
+@media (max-width: 480px) {
+    .login-container,
+    .register-container {
+        padding: 1.5rem;
+        border-radius: 10px;
+    }
 
+    .login-container h1 {
+        font-size: 1.3rem;
+    }
 
+    .register-container div {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 
-/* =======================index============================== */
+    .register-container label {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+
+    .register-container input[type="text"],
+    .register-container input[type="email"],
+    .register-container input[type="password"] {
+        width: 100%;
+    }
+}
