@@ -28,7 +28,7 @@ from .forms import (
 @ensure_csrf_cookie
 def index(request):
     """故障树主页面"""
-    return render(request, 'fault_tree/index.html')
+    return render(request, 'fault_tree/fault_tree.index')
 
 
 # ==================== 权限查询 ====================
