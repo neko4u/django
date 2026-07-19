@@ -22,7 +22,7 @@ function getCSRF() {
 
 // ==================== API 工具 ====================
 function apiUrl(path) {
-    return '/fault_tree/' + path.replace(/^\//, '');
+    return '/fault-tree/' + path.replace(/^\//, '');
 }
 
 async function apiGet(path) {
