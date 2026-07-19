@@ -60,6 +60,8 @@ urlpatterns = [
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),
+    #ft
+    path('fault-tree/', include('apps.fault_tree.urls')),
     #default
     path('', RedirectView.as_view(url='/login/')),
 ]

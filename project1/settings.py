@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'apps.llm_chat',
     'apps.llm_config',
     'apps.pointsBalanceSystem',
+    'apps.fault_tree',
 ]
 
 MIDDLEWARE = [
