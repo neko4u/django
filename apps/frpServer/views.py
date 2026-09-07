@@ -6,6 +6,7 @@ import logging
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
 
 from .decorators import frp_permission_required
 from apps.login.models import UserInfo, FrpPermission
@@ -123,6 +124,7 @@ def _json_err(msg, code=1, http=200):
 
 
 # POST /api/frp_session/start — 开启会话（余额校验/幂等复用）
+@csrf_exempt
 def api_frp_session_start(request):
     if request.method != 'POST':
         return _json_err('非法请求', http=405)
@@ -142,6 +144,7 @@ def api_frp_session_start(request):
 
 
 # POST /api/frp_session/heartbeat — 心跳（body: {"session_id": "xxx"}）
+@csrf_exempt
 def api_frp_session_heartbeat(request):
     if request.method != 'POST':
         return _json_err('非法请求', http=405)
@@ -167,6 +170,7 @@ def api_frp_session_heartbeat(request):
 
 
 # POST /api/frp_session/stop — 手动停止并结算（body: {"session_id": "xxx"}）
+@csrf_exempt
 def api_frp_session_stop(request):
     if request.method != 'POST':
         return _json_err('非法请求', http=405)
