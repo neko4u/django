@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from apps.login import views as login_views
-from frpServer import views as frpServer_views
+from apps.frpServer import views as frpServer_views
 from django.views.generic import RedirectView
 from django.urls import include
 from apps.llm_chat import views as chat_views
@@ -56,6 +56,11 @@ urlpatterns = [
     path('api/update_token/', frpServer_views.api_frp_update_token, name='frp_api_update_token'),
     path('api/status/', frpServer_views.api_frp_status_json, name='frp_api_status'),
     path('api/FrpToken',frpServer_views.FrpToken,name='FrpToken'),
+    # frp 会话计费（FrpClient 调用）
+    path('api/frp_session/start/', frpServer_views.api_frp_session_start, name='frp_session_start'),
+    path('api/frp_session/heartbeat/', frpServer_views.api_frp_session_heartbeat, name='frp_session_heartbeat'),
+    path('api/frp_session/stop/', frpServer_views.api_frp_session_stop, name='frp_session_stop'),
+    path('api/frp_session/status/', frpServer_views.api_frp_session_status, name='frp_session_status'),
     #pointsBalanceSystem
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat
