@@ -1,6 +1,18 @@
 from apps.login.models import FrpPermission
 from apps.login.services import JwtService
 
+import time
+import uuid
+from datetime import datetime, timedelta
+
+from django.core.cache import cache
+from django.db import transaction, models
+from django.db.utils import DatabaseError
+from django.utils import timezone
+
+from .models import UserTimeBalance, TimeChangeRecord, FrpSessionRecord
+import requests
+
 def authenticate_user(request):
     """
     从 session 或 JWT token 中统一提取 user_id。
@@ -58,17 +70,6 @@ def check_frp_permission(user_id, perm_name='can_access'):
 # redis 结构：
 #   frp:session:{uid}  -> hash {session_id, start_ts, stop_time, last_heartbeat}
 #   frp:online_uids    -> set 在线 uid（对账巡检用）
-
-import time
-import uuid
-from datetime import datetime, timedelta
-
-from django.core.cache import cache
-from django.db import transaction, models
-from django.db.utils import DatabaseError
-from django.utils import timezone
-
-from .models import UserTimeBalance, TimeChangeRecord, FrpSessionRecord
 
 SESSION_TTL = 120            # 心跳超时阈值（秒），超过判掉线
 HEARTBEAT_INTERVAL = 30      # 客户端心跳周期（秒），仅供参考/校验
@@ -357,3 +358,92 @@ def settle_timeout_sessions(now=None):
             settle_session(s, FrpSessionRecord.EndReason.TIMEOUT_PATROL, end_ts)
             count += 1
     return count
+
+
+
+# ---------------------------------------------------------------------------
+# 巡检任务3/4：对账防伪 + 黑名单管理（调 frps fork 本地管理 API）
+# ---------------------------------------------------------------------------
+
+FRPS_API = "http://127.0.0.1:7500"          # frps 管理端口（同机）
+BAN_TIERS = [60, 300, 1800]                  # 递增拉黑档位：1m / 5m / 30m（封顶）
+
+
+def _frps_get(path, timeout=3):
+    return requests.get(FRPS_API + path, timeout=timeout).json()
+
+
+def _frps_post(path, timeout=3):
+    return requests.post(FRPS_API + path, timeout=timeout).json()
+
+
+def get_frps_online_uids():
+    """拉取 frps 当前所有在线 uid（字符串列表）"""
+    data = _frps_get('/api/uid_connections')
+    return [str(item.get('uid')) for item in (data.get('data') or [])]
+
+
+def get_frps_blacklist():
+    """拉取 frps 黑名单 uid（字符串列表）"""
+    data = _frps_get('/api/uid_blacklist')
+    return [str(x) for x in (data.get('data') or [])]
+
+
+def reconcile_rogue_connections():
+    # 巡检任务3：对账防伪。
+    # frps 在线 但 redis 无该 uid -> 伪造/未授权连接：
+    #   ① 调 frps close 断开连接
+    #   ② 递增拉黑（违规计数 -> 档位 1m/5m/30m 封顶）
+    # 返回处理条数。
+    r = _redis()
+    try:
+        frps_uids = set(get_frps_online_uids())
+    except Exception:
+        return 0  # frps 不可达，跳过本轮
+
+    redis_uids = {str(u).decode() if isinstance(u, bytes) else str(u)
+                  for u in r.smembers('frp:online_uids')}
+
+    rogue = frps_uids - redis_uids
+    for uid in rogue:
+        # 递增违规计数（redis 计数决定档位）
+        vkey = f'frp:violation:{uid}'
+        count = r.incr(vkey)
+        r.expire(vkey, 30 * 24 * 3600)  # 计数保留 30 天
+        tier = min(count - 1, len(BAN_TIERS) - 1)
+        ban_sec = BAN_TIERS[tier]
+
+        # ① 断开 frps 连接
+        try:
+            _frps_post(f'/api/uid_connection/{uid}/close?reason=unauthorized')
+        except Exception:
+            pass
+        # ② 拉黑该 uid（记录到期时间用于任务4解除）
+        try:
+            _frps_post(f'/api/uid_blacklist/add?uid={uid}')
+            r.setex(f'frp:ban_until:{uid}', ban_sec, str(ban_sec))
+        except Exception:
+            pass
+    return len(rogue)
+
+
+def release_expired_bans():
+    # 巡检任务4：黑名单到期自动解除。
+    # 对比 frps 黑名单 与 redis 到期标记，已过期的调 remove 解除。
+    # 返回解除条数。
+    r = _redis()
+    try:
+        banned = get_frps_blacklist()
+    except Exception:
+        return 0
+
+    released = 0
+    for uid in banned:
+        # 有到期标记 -> 还没到期；无标记(过期被删/直接 add 的) -> 视为到期
+        if not r.exists(f'frp:ban_until:{uid}'):
+            try:
+                _frps_post(f'/api/uid_blacklist/remove?uid={uid}')
+                released += 1
+            except Exception:
+                pass
+    return released
