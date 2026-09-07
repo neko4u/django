@@ -65,3 +65,52 @@ class TimeChangeRecord(models.Model):
     def __str__(self):
         symbol = '-' if self.direction == self.Direction.DEDUCTION else '+'
         return f'{self.user_id} {symbol}{self.amount_seconds}s'
+
+
+# fork: FRP 会话记录（一次 start-stop 生命周期的审计与结算依据）
+# 设计口径（方案B·纯顺延）：
+#   - 会话开始：start_ts=now，stop_time=now+当时余额
+#   - 中途充值：只更新余额 + 顺延 stop_time，不产生中途结算
+#   - 结束（手动/耗尽/掉线）：一次结算 used=end_ts-start_ts
+
+class FrpSessionRecord(models.Model):
+    class EndReason(models.TextChoices):
+        MANUAL = 'manual', '用户手动停止'
+        BALANCE_EXHAUSTED = 'balance_exhausted', '余额耗尽自动断开'
+        TIMEOUT_PATROL = 'timeout_patrol', '心跳超时巡检断开'
+        FORCED = 'forced', '服务端强制断开'
+
+    session_id = models.CharField(max_length=64, primary_key=True, verbose_name='会话ID')
+    user = models.ForeignKey(
+        'login.UserInfo',
+        to_field='uid',
+        on_delete=models.PROTECT,
+        db_column='user_id',
+        related_name='frp_sessions',
+        verbose_name='用户'
+    )
+    start_ts = models.DateTimeField(verbose_name='会话开始时间')
+    stop_time = models.DateTimeField(verbose_name='预计到期时间')  # 充值会顺延
+    end_ts = models.DateTimeField(null=True, blank=True, verbose_name='实际结束时间')
+    end_reason = models.CharField(
+        max_length=32, choices=EndReason.choices,
+        default=EndReason.MANUAL, verbose_name='结束原因'
+    )
+    used_seconds = models.PositiveIntegerField(default=0, verbose_name='实际使用秒数')
+    refund_seconds = models.PositiveIntegerField(default=0, verbose_name='退回秒数')
+    status = models.CharField(
+        max_length=10, choices=[('active', '进行中'), ('closed', '已关闭')],
+        default='active', verbose_name='状态'
+    )
+
+    class Meta:
+        db_table = 'frp_session_record'
+        indexes = [
+            models.Index(fields=['user', 'start_ts']),
+            models.Index(fields=['status', 'stop_time']),  # 巡检扫到期用
+        ]
+        verbose_name = 'FRP会话记录'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f'{self.user_id} session {self.session_id} {self.status}'
