@@ -102,7 +102,7 @@ def _write_redis_session(uid, session_id, start_ts, stop_time, last_heartbeat):
     r = _redis()
     key = _session_key(uid)
     pipe = r.pipeline()
-    pipe.hset(key, mapping={
+    pipe.hmset(key, {
         'session_id': session_id,
         'start_ts': _to_ts(start_ts),
         'stop_time': _to_ts(stop_time),
@@ -111,6 +111,7 @@ def _write_redis_session(uid, session_id, start_ts, stop_time, last_heartbeat):
     pipe.expire(key, REDIS_SESSION_EXPIRE)
     pipe.sadd('frp:online_uids', str(uid))
     pipe.execute()
+
 
 
 def _clear_redis_session(uid):
