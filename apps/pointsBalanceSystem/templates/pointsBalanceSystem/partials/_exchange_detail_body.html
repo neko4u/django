@@ -1,0 +1,159 @@
+{# partials/_exchange_detail_body.html #}
+
+<div class="detail-container">
+
+    <!-- 消息区域 -->
+    <div id="toastContainer"></div>
+
+    {% if messages %}
+        <div class="message-area">
+            {% for message in messages %}
+                <div class="message message-{{ message.tags }}">
+                    <span>{{ message }}</span>
+                    <button class="message-close">×</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- 主卡片 -->
+    <div class="detail-card">
+
+        <div class="detail-header">
+
+            <h1>
+                {{ activity.name }}
+            </h1>
+
+            <p>
+                {{ activity.description }}
+            </p>
+
+        </div>
+
+        <div class="detail-body">
+
+            <!-- 信息 -->
+            <div class="detail-info">
+
+                <div class="detail-item">
+
+                    <span>
+                        当前积分
+                    </span>
+
+                    <strong id="pointsBalance">
+                        {{ points_balance }}
+                    </strong>
+
+                </div>
+
+                <div class="detail-item">
+
+                    <span>
+                        每份消耗
+                    </span>
+
+                    <strong>
+                        {{ activity.points_required }} 积分
+                    </strong>
+
+                </div>
+
+                <div class="detail-item">
+
+                    <span>
+                        每份获得
+                    </span>
+
+                    <strong>
+                        {{ activity.reward_value }} 秒
+                    </strong>
+
+                </div>
+
+            </div>
+
+            <!-- 兑换表单 -->
+            <form id="exchangeForm"
+                  method="post"
+                  action="{% url 'points:exchange_detail' %}?aid={{ activity.id }}">
+
+                {% csrf_token %}
+
+                <div class="form-group">
+
+                    <label for="id_quantity">
+
+                        兑换数量
+
+                    </label>
+
+                    {{ form.quantity }}
+
+                    {% if form.quantity.errors %}
+
+                        <div class="field-error">
+
+                            {{ form.quantity.errors }}
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+                {% if form.non_field_errors %}
+
+                    <div class="form-error">
+
+                        {{ form.non_field_errors }}
+
+                    </div>
+
+                {% endif %}
+
+                <!-- 实时计算 -->
+                <div class="calc-box">
+
+                    <div class="calc-item">
+
+                        <span>
+                            总消耗积分
+                        </span>
+
+                        <strong id="totalPoints">
+                            {{ activity.points_required }}
+                        </strong>
+
+                    </div>
+
+                    <div class="calc-item">
+
+                        <span>
+                            总获得时长
+                        </span>
+
+                        <strong id="totalSeconds">
+                            {{ activity.reward_value }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+                <button type="submit"
+                        class="submit-btn"
+                        id="submitBtn">
+
+                    确认兑换
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
