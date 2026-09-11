@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Index{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'login/css/index.css' %}">
+<script>
+    document.querySelectorAll('.left-nav-item a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            
+            if (href.startsWith('#')) {
+                e.preventDefault();
+                document.querySelectorAll('.tab-content').forEach(el => {
+                    el.style.display = 'none';
+                });
+                const targetId = href.substring(1) + '-content';
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    targetEl.style.display = 'flex'; 
+                }
+            }
+        });
+    });
+</script>
+<style>
+    .tab-content {
+        display: none;
+        width: 100%;
+        height: calc(100vh - 70px); 
+        
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    .tab-content h1 {
+        margin: 0;
+    }
+    #sec1-content { display: flex; }
+</style>
+<div id="sec1-content" class="tab-content">
+    <h1 style="font-size: 50px;"><a href="{% url 'page1' %}"><span style="font-size: 48;">Kirakira-Bimu!</span></a></h1>
+</div>
+
+<div id="sec2-content" class="tab-content">
+    <h1 style="font-size: 50px;"><a href="{% url 'frp_manage' %}">透传管理面板</a></h1>
+</div>
+
+<div id="sec3-content" class="tab-content">
+    <h1 style="font-size: 50px;"></h1>
+</div>
+
+<div id="sec4-content" class="tab-content">
+    <h1>Section 4</h1>
+</div>
+
+
+{% endblock %}

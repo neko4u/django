@@ -116,7 +116,7 @@ def _ts(dt):
 
 
 def _json_ok(**data):
-    return JsonResponse({'code': 0, 'msg': 'success', **data})
+    return JsonResponse({'code': 0, 'msg': 'success', 'server_time': int(time.time()), **data})
 
 
 def _json_err(msg, code=1, http=200):

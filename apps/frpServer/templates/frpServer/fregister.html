@@ -1,0 +1,110 @@
+{% load static %}
+<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册</title>
+    <link rel="stylesheet" href="{% static 'login/css/style.css' %}">
+    <!-- <script src="{% static 'login/js/index.js' %}" defer></script> -->
+</head>
+<style>
+    .error{
+        width:100%;
+        color: red;
+        font-size: 16px;
+        justify-content: center;
+    }
+</style>
+<script>
+            document.querySelector('form').addEventListener('submit', function(e) {
+                let hasError = false;
+                
+                const usernameError = validateName(document.querySelector('input[name="username"]').value);
+                const nameError = validateName(document.querySelector('input[name="name"]').value);
+                const pwdError = validateName(document.querySelector('input[name="pwd"]').value);
+                const emailError = validateEmail(document.querySelector('input[name="email"]').value);
+                const phoneError = validatePhone(document.querySelector('input[name="phone"]').value);
+                
+                showError('name-error', nameError);
+                showError('email-error', emailError);
+                showError('phone-error', phoneError);
+                
+                if (usernameError || pwdError || nameError || emailError || phoneError) {
+                    e.preventDefault();
+                    hasError = true;
+                }
+                
+                return !hasError;
+            });
+</script>
+<body>
+    <div class="register-container" style="">
+        <form method="post" enctype="multipart/form-data" style="width: 100%;">
+            {% csrf_token %}
+            <!-- <div>
+                <label style="user-select: none;">用户头像</label>
+                <input type="file" name="avatar" accept="image/jpeg, image/png" id="avatarInput">
+                <div id="avatarPreview" class="preview-container"></div>
+            </div> -->
+            <div>
+                <label style="user-select: none;">用户名<a style="color: red;">*</a></label>
+                {{ form.account }}
+                <!-- <input type="text" name="account" autocomplete="off" value="{{ form.account.value|default:'' }}" placeholder="英文与数字4-20位"> -->
+            </div>
+
+            <div>
+                <label style="user-select: none;">密码<a style="color: red;">*</a></label>
+                {{ form.pwd }}
+                <!-- <input type="password" name="pwd" autocomplete="new-password" placeholder="8-20位包含大小写字母和数字"> -->
+            </div> 
+            <div>
+                <label style="user-select: none;">确认密码<a style="color: red;">*</a></label>
+                {{ form.pwd_confirm }}
+                <!-- <input type="password" name="pwd_confirm" autocomplete="new-password" placeholder=""> -->
+            </div> 
+            <div>
+                <label style="user-select: none;">昵称<a style="color: red;">*</a></label>
+                {{ form.name }}
+                <!-- <input type="text" name="name" autocomplete="off" value="{{ form.name.value|default:'' }}" placeholder="英文与数字形式4-16位">  -->
+            </div>
+            <div>
+                <label style="user-select: none;">邮箱<a style="color: red;">*</a></label>
+                {{ form.email }}
+                <!-- <input type="text" name="email" autocomplete="off" value="{{ form.email.value|default:'' }}"> -->
+            </div>
+            <div>
+                <label style="user-select: none;">手机<a style="color: red;">*</a></label>
+                {{ form.phone }}
+                <!-- <input type="text" name="phone" autocomplete="off" value="{{ form.phone.value|default:'' }}"> -->
+            </div>
+            <div class="error-container" style="width: 100%;display: table;justify-content: center;">
+                {% if form.account.errors %}
+                <div class="error" >{{ form.account.errors.0 }}</div>
+                {% endif %}
+                {% if form.pwd.errors %}
+                <div class="error" >{{ form.pwd.errors.0 }}</div>
+                {% endif %}
+                {% if form.pwd_confirm.errors %}
+                <div class="error" >{{ form.pwd_confirm.errors.0 }}</div>
+                {% endif %}
+                {% if form.name.errors %}
+                <div class="error" >{{ form.name.errors.0 }}</div>
+                {% endif %}
+                {% if form.email.errors %}
+                <div class="error" >{{ form.email.errors.0 }}</div>
+                {% endif %}
+                {% if form.phone.errors %}
+                <div class="error" >{{ form.phone.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <button type="submit">注册</button>
+            <div style="justify-content: center;margin-top: 1rem;">
+                <a href="{% url 'flogin' %}" style="color: aqua;">返回登录</a>
+            </div>
+            
+        </form>
+    </div>
+</body>
+</html>

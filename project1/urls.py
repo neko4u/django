@@ -29,6 +29,7 @@ urlpatterns = [
     path('token_login/', login_views.user_token_login,name="user_token_login"),
     path('logout/', login_views.user_logout, name='logout'),
     path('index/', login_views.index,name="index"),
+    path('home/', login_views.index,name="index"),
     path('page1/', login_views.page1,name="page1"),
     path('register/', login_views.register,name="register"),
     path('modify_info/', login_views.modify_info,name="modify_info"),
@@ -49,6 +50,10 @@ urlpatterns = [
     path('ad_create_comment/',login_views.ad_create_comment,name="ad_create_comment"),
     path('task-list-api/', login_views.task_list_api, name='task_list_api'),
     # frp
+        # frp_user_index : 同主页,限制访问内容
+    path('findex/', login_views.findex, name='findex'),
+    path('flogin/', login_views.frp_user_login, name='flogin'),
+    path('fregister/', login_views.frp_register, name='fregister'),
     path('manage/', frpServer_views.frp_index, name='frp_manage'),
     path('api/start/', frpServer_views.api_frp_start, name='frp_api_start'),
     path('api/stop/', frpServer_views.api_frp_stop, name='frp_api_stop'),

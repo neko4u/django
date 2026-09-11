@@ -1,0 +1,64 @@
+{% load static %}
+<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="{% static 'login/css/style.css' %}">
+</head>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // 构造 FormData 对象，自动包含表单字段和 CSRF token
+        const formData = new FormData(this);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'  // 标记 AJAX 请求
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                document.getElementById('errorMsg').innerText = data.error;
+            }
+        })
+        .catch(error => {
+            console.error('请求失败:', error);
+            document.getElementById('errorMsg').innerText = '网络错误，请稍后重试';
+        });
+    });
+</script>
+<body>
+    <div class="login-container">
+        <h1 style="user-select: none;">Login</h1>
+        <form id="loginForm" method="post" autocomplete="off">
+            {% csrf_token %}
+            <div>
+                <label style="user-select: none;">用户名</label>
+                <input type="text" name="user">
+            </div>
+            <div>
+                <label style="user-select: none;">密码</label>
+                <input type="password" name="pwd">
+            </div>
+            {% if error %}
+                <div class="alert alert-{{ message.tags }}" style="user-select: none; color: red;">{{ error }}</div>
+            {% endif %}
+            <div>
+                <button type="submit">登录</button>
+            </div>
+            <div>
+                <a href="{% url 'fregister' %}" style="color: aqua;">注册</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

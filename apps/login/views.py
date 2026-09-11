@@ -80,6 +80,62 @@ def user_login(request):
     
     return render(request, 'login/login.html')
 
+def frp_user_login(request):
+    # 0911新增,用于frp登录,重定向到frp主页
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    if request.session.get('is_logged_in'):
+        if is_ajax:
+            return JsonResponse({'success': True, 'redirect_url': reverse('index')})
+        return redirect('findex')
+
+    if request.method == "GET":
+        return render(request, 'frpServer/flogin.html')
+
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['user']
+            password = form.cleaned_data['pwd']
+            # user = AuthenticationService.authenticate_user(
+            #     form.cleaned_data['user'],
+            #     form.cleaned_data['pwd']
+            # )
+
+            cache_key = f'login_fails_{username}'
+            failed_attempts = cache.get(cache_key, 0)
+            if failed_attempts >= MAX_FAILED_ATTEMPTS:
+                ttl = cache.ttl(cache_key) or 0
+                minutes = ttl // 60
+                error = f'账户已被锁定，请等待 {minutes} 分钟后再试。'
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': error})
+                return render(request, 'frpServer/flogin.html', {'error': error})
+            user = AuthenticationService.authenticate_user(username, password)
+
+            if user:
+                cache.delete(cache_key)
+                request.session['is_logged_in'] = True
+                request.session['info'] = AuthenticationService.login_session_data(user)
+                request.session.modified = True
+                if is_ajax:
+                    return JsonResponse({'success': True, 'redirect_url': reverse('index')})
+                return redirect('index')
+            else:
+                new_attempts = failed_attempts + 1
+                cache.set(cache_key, new_attempts, timeout=LOCKOUT_TIME)
+                remaining = MAX_FAILED_ATTEMPTS - new_attempts
+                error = f'帐号或密码错误，您还有 {remaining} 次尝试机会。'
+                if (remaining == 0):
+                    error = '帐号密码错误，帐号已锁定！'
+                if is_ajax:
+                    return JsonResponse({'success': False, 'error': error})
+                return render(request, 'frpServer/flogin.html', {'error': error})
+        else:
+            return render(request, 'frpServer/flogin.html',{'error': "请输入正确的帐号或密码"})
+        
+    
+    return render(request, 'frpServer/flogin.html')
+
 
 
 def user_logout(request):
@@ -97,6 +153,18 @@ def register(request):
     else:
         form = RegisterForm()
     return render(request, 'login/register.html', {'form': form})
+
+def frp_register(request):
+    # 0911新增方法,用于frp推广注册
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            AuthenticationService.register_user(form)
+            messages.success(request, "注册成功，请登录！")
+            return redirect('flogin')
+    else:
+        form = RegisterForm()
+    return render(request, 'frpServer/fregister.html', {'form': form})
 
 @login_required_view
 def modify_info(request):
@@ -125,6 +193,14 @@ def modify_info(request):
 @login_required_view
 def index(request):
     return render(request, 'login/index.html')
+
+@login_required_view
+def findex(request):
+    return render(request, 'frpServer/findex.html')
+
+@login_required_view
+def home(request):
+    return render(request, 'login/home.html')
 
 @login_required_view
 def page1(request):
