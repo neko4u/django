@@ -16,13 +16,22 @@
     box-sizing: border-box;
 }
 
-body {
+.exchange-embed {
     font-family: 'Segoe UI', system-ui, sans-serif;
     background: var(--bg-secondary);
     color: var(--text-primary);
+    width: 100%;
+    min-height: 100%;
+    text-align: left;
+}
+
+body.exchange-page {
     margin: 0;
     padding: 0;
+    min-height: 100vh;
+    background: var(--bg-secondary);
 }
+
 
 .detail-container {
     width: 700px;
@@ -250,5 +259,52 @@ body {
 
     .toast {
         min-width: unset;
+    }
+}
+
+/* ====== 实时计算框（原文件缺失，补上） ====== */
+.calc-box {
+    display: flex;
+    gap: 12px;
+    margin: 4px 0 20px;
+}
+
+.calc-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--accent-light, #e8f1fe);
+    border: 1px solid var(--border, #d0d7e2);
+}
+
+.calc-item span {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #5f6b7a);
+}
+
+.calc-item strong {
+    font-size: 1.15rem;
+    color: var(--accent, #2b7de9);
+}
+
+.exchange-embed .detail-container {
+    margin: 24px auto;
+}
+
+.exchange-embed .message-area {
+    max-width: 700px;
+    margin: 16px auto 0;
+}
+
+.exchange-embed #toastContainer {
+    top: 72px;
+}
+
+@media (max-width: 480px) {
+    .calc-box {
+        flex-direction: column;
     }
 }

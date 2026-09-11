@@ -3,6 +3,8 @@
 {% block title %}Soriel主页控制台{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{% static 'login/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'pointsBalanceSystem/css/exchange_detail.css' %}">
+
 <script>
     document.querySelectorAll('.left-nav-item a').forEach(link => {
         link.addEventListener('click', function(e) {
@@ -37,6 +39,14 @@
         margin: 0;
     }
     #sec1-content { display: flex; }
+    #sec3-content {
+        height: auto;
+        min-height: calc(100vh - 70px);
+        justify-content: flex-start;
+        align-items: stretch;
+        text-align: left;
+        padding-bottom: 24px;
+    }
 </style>
 <div id="sec1-content" class="tab-content">
     <h1 style="font-size: 50px;"><a href="{% url 'page1' %}"><span style="font-size: 48;">个人主页</span></a></h1>
@@ -47,7 +57,11 @@
 </div>
 
 <div id="sec3-content" class="tab-content">
-    <h1 style="font-size: 50px;">等待开启活动...</h1>
+    {% if activity %}
+        {% include "pointsBalanceSystem/partials/_exchange_detail_body.html" %}
+    {% else %}
+        <h1 style="font-size: 48px;">暂无可兑换活动</h1>
+    {% endif %}
 </div>
 
 <div id="sec4-content" class="tab-content">

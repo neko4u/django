@@ -1,159 +1,93 @@
-{# partials/_exchange_detail_body.html #}
+{% load static %}
 
-<div class="detail-container">
+<div class="exchange-embed">
 
-    <!-- 消息区域 -->
+    <!-- Toast 容器 -->
     <div id="toastContainer"></div>
 
+    <!-- Django messages -->
     {% if messages %}
         <div class="message-area">
             {% for message in messages %}
                 <div class="message message-{{ message.tags }}">
                     <span>{{ message }}</span>
-                    <button class="message-close">×</button>
+                    <button type="button" class="message-close">&times;</button>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <!-- 主卡片 -->
-    <div class="detail-card">
+    <div class="detail-container">
 
-        <div class="detail-header">
+        <div class="detail-card">
 
-            <h1>
-                {{ activity.name }}
-            </h1>
-
-            <p>
-                {{ activity.description }}
-            </p>
-
-        </div>
-
-        <div class="detail-body">
-
-            <!-- 信息 -->
-            <div class="detail-info">
-
-                <div class="detail-item">
-
-                    <span>
-                        当前积分
-                    </span>
-
-                    <strong id="pointsBalance">
-                        {{ points_balance }}
-                    </strong>
-
-                </div>
-
-                <div class="detail-item">
-
-                    <span>
-                        每份消耗
-                    </span>
-
-                    <strong>
-                        {{ activity.points_required }} 积分
-                    </strong>
-
-                </div>
-
-                <div class="detail-item">
-
-                    <span>
-                        每份获得
-                    </span>
-
-                    <strong>
-                        {{ activity.reward_value }} 秒
-                    </strong>
-
-                </div>
-
+            <div class="detail-header">
+                <h1>{{ activity.name }}</h1>
+                <p>{{ activity.description }}</p>
             </div>
 
-            <!-- 兑换表单 -->
-            <form id="exchangeForm"
-                  method="post"
-                  action="{% url 'points:exchange_detail' %}?aid={{ activity.id }}">
+            <div class="detail-body">
 
-                {% csrf_token %}
+                <div class="detail-info">
 
-                <div class="form-group">
+                    <div class="detail-item">
+                        <span>当前积分</span>
+                        <strong id="pointsBalance">{{ points_balance }}</strong>
+                    </div>
 
-                    <label for="id_quantity">
+                    <div class="detail-item">
+                        <span>每份消耗</span>
+                        <strong>{{ activity.points_required }} 积分</strong>
+                    </div>
 
-                        兑换数量
+                    <div class="detail-item">
+                        <span>每份获得</span>
+                        <strong>{{ activity.reward_value }} 秒</strong>
+                    </div>
 
-                    </label>
+                </div>
 
-                    {{ form.quantity }}
+                <form id="exchangeForm"
+                      method="post"
+                      action="{% url 'points:exchange_detail' %}?aid={{ activity.id }}">
 
-                    {% if form.quantity.errors %}
+                    {% csrf_token %}
 
-                        <div class="field-error">
+                    <div class="form-group">
+                        <label for="id_quantity">兑换数量</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}
+                            <div class="field-error">{{ form.quantity.errors }}</div>
+                        {% endif %}
+                    </div>
 
-                            {{ form.quantity.errors }}
-
-                        </div>
-
+                    {% if form.non_field_errors %}
+                        <div class="form-error">{{ form.non_field_errors }}</div>
                     {% endif %}
 
-                </div>
-
-                {% if form.non_field_errors %}
-
-                    <div class="form-error">
-
-                        {{ form.non_field_errors }}
-
+                    <div class="calc-box">
+                        <div class="calc-item">
+                            <span>总消耗积分</span>
+                            <strong id="totalPoints">{{ activity.points_required }}</strong>
+                        </div>
+                        <div class="calc-item">
+                            <span>总获得时长</span>
+                            <strong id="totalSeconds">{{ activity.reward_value }}</strong>
+                        </div>
                     </div>
 
-                {% endif %}
+                    <button type="submit" class="submit-btn" id="submitBtn">确认兑换</button>
 
-                <!-- 实时计算 -->
-                <div class="calc-box">
+                </form>
 
-                    <div class="calc-item">
-
-                        <span>
-                            总消耗积分
-                        </span>
-
-                        <strong id="totalPoints">
-                            {{ activity.points_required }}
-                        </strong>
-
-                    </div>
-
-                    <div class="calc-item">
-
-                        <span>
-                            总获得时长
-                        </span>
-
-                        <strong id="totalSeconds">
-                            {{ activity.reward_value }}
-                        </strong>
-
-                    </div>
-
-                </div>
-
-                <button type="submit"
-                        class="submit-btn"
-                        id="submitBtn">
-
-                    确认兑换
-
-                </button>
-
-            </form>
-
+            </div>
         </div>
-
     </div>
-
 </div>
+
+<script>
+    window.POINTS_REQUIRED = Number('{{ activity.points_required|default:0 }}');
+    window.REWARD_SECONDS  = Number('{{ activity.reward_value|default:0 }}');
+</script>
+
+<script src="{% static 'pointsBalanceSystem/js/exchange_detail.js' %}" defer></script>

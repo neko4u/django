@@ -16,6 +16,10 @@ from .models import CommentGenerationTask
 import json
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
+from apps.pointsBalanceSystem.models import PointExchangeActivity, UserPoint
+from apps.pointsBalanceSystem.forms import ExchangeFRPForm
+
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_TIME = 60 * 30
@@ -194,9 +198,36 @@ def modify_info(request):
 def index(request):
     return render(request, 'login/index.html')
 
+
+#  ------ frp 主页,兑换活动固定2
+FINDEX_EXCHANGE_AID = 2
 @login_required_view
 def findex(request):
-    return render(request, 'frpServer/findex.html')
+    context = {}
+
+    uid = (request.session.get('info') or {}).get('uid')
+    user = UserInfo.objects.filter(uid=uid).first() if uid else None
+
+    if user:
+        # 只取启用中的活动；取不到时模板显示占位文案，不会 404
+        activity = (
+            PointExchangeActivity.objects
+            .filter(pk=FINDEX_EXCHANGE_AID, enable=True)
+            .first()
+        )
+
+        points_balance = 0
+        user_point = UserPoint.objects.filter(user=user).first()
+        if user_point and user_point.enable:
+            points_balance = user_point.points_balance
+
+        context.update({
+            'activity': activity,
+            'points_balance': points_balance,
+            'form': ExchangeFRPForm(user=user, activity=activity),
+        })
+
+    return render(request, 'frpServer/findex.html', context)
 
 @login_required_view
 def home(request):
