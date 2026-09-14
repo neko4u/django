@@ -66,7 +66,12 @@ urlpatterns = [
     path('api/frp_session/heartbeat/', frpServer_views.api_frp_session_heartbeat, name='frp_session_heartbeat'),
     path('api/frp_session/stop/', frpServer_views.api_frp_session_stop, name='frp_session_stop'),
     path('api/frp_session/status/', frpServer_views.api_frp_session_status, name='frp_session_status'),
+    # 远程端口租赁（FrpClient 调用）
+    path('api/frp_port/allocate/', frpServer_views.api_frp_port_allocate, name='frp_port_allocate'),
+    path('api/frp_port/release/', frpServer_views.api_frp_port_release, name='frp_port_release'),
+    path('api/frp_port/', frpServer_views.api_frp_port_current, name='frp_port_current'),
     #pointsBalanceSystem
+
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),

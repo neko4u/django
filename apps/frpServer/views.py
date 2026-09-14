@@ -211,3 +211,53 @@ def api_frp_session_status(request):
         stop_time_ts=_ts(session.stop_time) if session else 0,
         start_ts=_ts(session.start_ts) if session else 0,
     )
+
+
+
+
+
+# fork: 远程端口租赁接口（FrpClient 调用）
+#   分配时点: 客户端点「连接」时 allocate; 断开时 release
+
+FRP_PUBLIC_HOST = 'ai.sorielflow.com'   # 对外展示的访问域名(客户端拼接 host:port)
+
+
+# POST /api/frp_port/allocate/ — 分配一个远程端口（需先开启时长）
+@csrf_exempt
+def api_frp_port_allocate(request):
+    if request.method != 'POST':
+        return _json_err('非法请求', http=405)
+    user = _session_user(request)
+    if not user:
+        return _json_err('未登录或登录已过期', code=401, http=401)
+
+    # 服务端复检门禁: 必须有活跃会话才允许占用端口
+    if not FrpSessionRecord.objects.filter(user=user, status='active').exists():
+        return _json_err('请先开启时长', code=2)
+
+    try:
+        port = frp_services.allocate_remote_port(user)
+    except ValueError as e:
+        return _json_err(str(e))
+    return _json_ok(remote_port=port, host=FRP_PUBLIC_HOST)
+
+
+# POST /api/frp_port/release/ — 释放当前端口租约（断开连接时调用）
+@csrf_exempt
+def api_frp_port_release(request):
+    if request.method != 'POST':
+        return _json_err('非法请求', http=405)
+    user = _session_user(request)
+    if not user:
+        return _json_err('未登录或登录已过期', code=401, http=401)
+    port = frp_services.release_remote_port(user.uid)
+    return _json_ok(remote_port=port or 0)
+
+
+# GET /api/frp_port/ — 查询当前端口（客户端重启后恢复显示用）
+def api_frp_port_current(request):
+    user = _session_user(request)
+    if not user:
+        return _json_err('未登录或登录已过期', code=401, http=401)
+    port = frp_services.get_remote_port(user.uid)
+    return _json_ok(remote_port=port or 0, host=FRP_PUBLIC_HOST)
