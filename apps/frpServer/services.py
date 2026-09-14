@@ -233,7 +233,19 @@ def heartbeat(user, session_id, now=None):
     session = FrpSessionRecord.objects.filter(
         user=user, status='active', session_id=session_id).first()
     if not session:
-        raise ValueError('会话不存在或已结束，请重新开始')
+        # DB 已无该会话 -> 清理可能残留的 redis 痕迹
+        # 仅当残留记录的 session_id 与本次请求一致时才清, 避免误删同 uid 其他设备的新会话
+        try:
+            r0 = _redis()
+            cur = r0.hget(_session_key(user.uid), 'session_id')
+            if cur is not None:
+                cur = cur.decode() if isinstance(cur, bytes) else cur
+                if cur == session_id:
+                    _clear_redis_session(user.uid)
+        except Exception:
+            pass
+        raise ValueError('会话已失效，请重新开启时长')
+
 
     if now >= session.stop_time:
         settle_session(session, FrpSessionRecord.EndReason.BALANCE_EXHAUSTED, now)
