@@ -11,3 +11,5 @@ local_settings.py
 staticfiles/
 media/
 *.bak
+
+logs/
