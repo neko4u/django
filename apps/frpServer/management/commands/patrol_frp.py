@@ -62,6 +62,7 @@ class Command(BaseCommand):
                 ('expired', '到期结算', frp_services.settle_expired_sessions),
                 ('timeout', '心跳超时结算', frp_services.settle_timeout_sessions),
                 ('orphan', '孤儿会话清理', frp_services.cleanup_orphan_sessions),
+                ('ports', '端口租约回收', frp_services.cleanup_orphan_port_leases),
                 ('rogue', '对账防伪', frp_services.reconcile_rogue_connections),
                 ('unban', '黑名单到期解除', frp_services.release_expired_bans),
             )
@@ -94,6 +95,9 @@ class Command(BaseCommand):
             f'[{stamp}] 巡检完成 {cost}ms | '
             f'到期结算 {result.get("expired")} | '
             f'超时结算 {result.get("timeout")} | '
+            f'孤儿清理 {result.get("orphan")} | '
+            f'端口回收 {result.get("ports")} | '
             f'对账处理 {result.get("rogue")} | '
             f'解封 {result.get("unban")}'
         )
+

@@ -511,3 +511,157 @@ def cleanup_orphan_sessions():
             cleaned += 1
 
     return cleaned
+
+
+
+
+# 端口租赁：远程端口由服务器在 [PORT_MIN, PORT_MAX] 内随机分配
+#   frp:ports_free     SET    空闲端口池（分配=SPOP 原子弹出，释放=SADD 归还）
+#   frp:ports_owner    HASH   port -> "uid|分配时间戳"
+#   frp:port_of:{uid}  STRING 该 uid 当前租到的端口（幂等：重复分配返回同一个）
+# 并发安全由 Lua 脚本保证（EVAL 原子执行），不会出现两个请求拿到同一端口。
+
+
+
+PORT_MIN = 6100
+PORT_MAX = 6500
+PORT_LEASE_GRACE = 120   # 秒：分配后 N 秒内即使 frps 未上线也不回收（等客户端连上）
+
+
+def _port_of_key(uid):
+    return f'frp:port_of:{uid}'
+
+
+def _dec(v):
+    if v is None:
+        return None
+    return v.decode() if isinstance(v, bytes) else str(v)
+
+
+_ALLOC_PORT_LUA = """
+local exist = redis.call('GET', KEYS[3])
+if exist then return exist end
+local port = redis.call('SPOP', KEYS[1])
+if not port then return false end
+redis.call('HSET', KEYS[2], port, ARGV[1] .. '|' .. ARGV[2])
+redis.call('SET', KEYS[3], port)
+return port
+"""
+
+_RELEASE_PORT_LUA = """
+local port = redis.call('GET', KEYS[3])
+if not port then return false end
+local owner = redis.call('HGET', KEYS[2], port)
+if owner then
+  local uid = string.match(owner, '^[^|]+')
+  if uid ~= ARGV[1] then return false end
+end
+redis.call('DEL', KEYS[3])
+redis.call('HDEL', KEYS[2], port)
+redis.call('SADD', KEYS[1], port)
+return port
+"""
+
+
+def ensure_port_pool():
+    """首次使用时初始化空闲端口池（已有归属的端口不放入池）。"""
+    r = _redis()
+    if not r.set('frp:ports_seeded', '1', nx=True):
+        return
+    pipe = r.pipeline()
+    for p in range(PORT_MIN, PORT_MAX + 1):
+        pipe.sadd('frp:ports_free', p)
+    pipe.execute()
+    for port in (r.hgetall('frp:ports_owner') or {}):
+        r.srem('frp:ports_free', port)
+
+
+def allocate_remote_port(user):
+    """为 uid 分配一个空闲端口（幂等：已有租约直接返回）。池满抛 ValueError。"""
+    ensure_port_pool()
+    r = _redis()
+    res = r.eval(
+        _ALLOC_PORT_LUA, 3,
+        'frp:ports_free', 'frp:ports_owner', _port_of_key(user.uid),
+        str(user.uid), str(int(time.time())))
+    if res is None or res is False:
+        raise ValueError('端口池已满，请稍后重试')
+    return int(_dec(res))
+
+
+def get_remote_port(uid):
+    """查询 uid 当前租到的端口（无则 None）。"""
+    v = _dec(_redis().get(_port_of_key(uid)))
+    return int(v) if v else None
+
+
+def release_remote_port(uid):
+    """释放 uid 的端口租约（幂等）。返回被释放的端口或 None。"""
+    r = _redis()
+    res = r.eval(
+        _RELEASE_PORT_LUA, 3,
+        'frp:ports_free', 'frp:ports_owner', _port_of_key(uid),
+        str(uid))
+    return int(_dec(res)) if res else None
+
+
+def port_pool_stats():
+    """端口池统计（供巡检/排查用）。"""
+    r = _redis()
+    return {
+        'free': r.scard('frp:ports_free'),
+        'used': r.hlen('frp:ports_owner'),
+        'total': PORT_MAX - PORT_MIN + 1,
+    }
+
+
+def rebuild_port_pool():
+    """自愈：按 owner 记录重建空闲池（free = 全区间 - 已租出）。返回已租出数量。"""
+    r = _redis()
+    owned = {_dec(p) for p in (r.hgetall('frp:ports_owner') or {})}
+    pipe = r.pipeline()
+    for p in range(PORT_MIN, PORT_MAX + 1):
+        if str(p) in owned:
+            pipe.srem('frp:ports_free', p)
+        else:
+            pipe.sadd('frp:ports_free', p)
+    pipe.execute()
+    r.set('frp:ports_seeded', '1')
+    return len(owned)
+
+
+def cleanup_orphan_port_leases(now=None):
+    """
+    巡检：回收孤儿端口租约（客户端崩溃/异常退出的兜底）。
+    判定：该 uid 已不在 frps 在线列表，且租约已超过 PORT_LEASE_GRACE 秒 -> 释放。
+          （宽限期用于等待客户端把隧道真正连起来）
+    返回回收条数。
+    """
+    now = now or _now()
+    r = _redis()
+    try:
+        frps_uids = set(get_frps_online_uids())
+    except Exception:
+        return 0
+
+    rebuild_port_pool()   # 顺手自愈一次，保证 free 池与 owner 不矛盾
+
+    owners = r.hgetall('frp:ports_owner') or {}
+    now_ts = int(now.timestamp())
+    cleaned = 0
+    for p, val in owners.items():
+        port = int(_dec(p))
+        uid, _, ts = _dec(val).partition('|')
+        if uid in frps_uids:
+            continue                      # 连接还在, 保留
+        try:
+            if now_ts - int(ts or 0) < PORT_LEASE_GRACE:
+                continue                  # 宽限期内, 等客户端连上
+        except ValueError:
+            pass
+        r.delete(_port_of_key(uid))
+        r.hdel('frp:ports_owner', port)
+        r.sadd('frp:ports_free', port)
+        cleaned += 1
+    return cleaned
+
