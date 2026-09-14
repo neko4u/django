@@ -367,21 +367,27 @@ def settle_timeout_sessions(now=None):
     sessions = FrpSessionRecord.objects.filter(status='active')
     count = 0
     for s in sessions:
-        data = r.hgetall(_session_key(s.user_id))
-        if not data:
-            # redis 无记录：可能是孤儿/被清，按最早可判掉线时间兜底
+        data = _hgetall_str(_session_key(s.user_id))
+
+        # 最后心跳时间戳（缺失/非法一律按 start_ts 兜底，绝不能回落成 0/1970）
+        raw_hb = data.get('last_heartbeat')
+        last_hb_ts = int(raw_hb) if raw_hb and raw_hb.isdigit() else None
+
+        if last_hb_ts is None:
+            # redis 无记录或字段缺失：按最早可判掉线时间兜底
             end_ts = s.start_ts + timedelta(seconds=SESSION_TTL)
             if now >= end_ts:
                 settle_session(s, FrpSessionRecord.EndReason.TIMEOUT_PATROL, end_ts)
                 count += 1
             continue
 
-        last_hb = _from_ts(int(data.get('last_heartbeat', 0)))
+        last_hb = _from_ts(last_hb_ts)
         if now - last_hb > timedelta(seconds=SESSION_TTL):
             end_ts = last_hb + timedelta(seconds=SESSION_TTL)
             settle_session(s, FrpSessionRecord.EndReason.TIMEOUT_PATROL, end_ts)
             count += 1
     return count
+
 
 
 
