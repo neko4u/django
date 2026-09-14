@@ -419,25 +419,38 @@ def reconcile_rogue_connections():
 
     rogue = frps_uids - redis_uids
     for uid in rogue:
-        # 递增违规计数（redis 计数决定档位）
+        #   曾有过会话记录的 uid(可能只是心跳抖动被任务2结算) -> 只断不拉黑
+        #   从未有过任何会话记录的 uid(纯伪造/扫描)          -> 断开 + 递增拉黑
+        had_session = False
+        try:
+            had_session = FrpSessionRecord.objects.filter(user_id=uid).exists()
+        except Exception:
+            had_session = False
+
+        # 断开 frps 连接(两种情况都要断: 没有有效会话就不该占用 frps)
+        try:
+            reason = 'session_expired' if had_session else 'unauthorized'
+            _frps_post(f'/api/uid_connection/{uid}/close?reason={reason}')
+        except Exception:
+            pass
+
+        # 有会话痕迹 -> 不拉黑
+        if had_session:
+            continue
+
+        # 纯伪造连接 -> 递增拉黑（redis 计数决定档位）
         vkey = f'frp:violation:{uid}'
         count = r.incr(vkey)
         r.expire(vkey, 30 * 24 * 3600)  # 计数保留 30 天
         tier = min(count - 1, len(BAN_TIERS) - 1)
         ban_sec = BAN_TIERS[tier]
-
-        # ① 断开 frps 连接
-        try:
-            _frps_post(f'/api/uid_connection/{uid}/close?reason=unauthorized')
-        except Exception:
-            pass
-        # ② 拉黑该 uid（记录到期时间用于任务4解除）
         try:
             _frps_post(f'/api/uid_blacklist/add?uid={uid}')
             r.setex(f'frp:ban_until:{uid}', ban_sec, str(ban_sec))
         except Exception:
             pass
     return len(rogue)
+
 
 
 def release_expired_bans():

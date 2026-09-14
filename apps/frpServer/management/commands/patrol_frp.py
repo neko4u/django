@@ -57,13 +57,15 @@ class Command(BaseCommand):
         result = {}
 
         try:
-            # 顺序有讲究：先结算(放开名额/清在线标记)，再对账，最后解封
+            # 处理顺序
             tasks = (
                 ('expired', '到期结算', frp_services.settle_expired_sessions),
                 ('timeout', '心跳超时结算', frp_services.settle_timeout_sessions),
+                ('orphan', '孤儿会话清理', frp_services.cleanup_orphan_sessions),
                 ('rogue', '对账防伪', frp_services.reconcile_rogue_connections),
                 ('unban', '黑名单到期解除', frp_services.release_expired_bans),
             )
+
             for key, label, fn in tasks:
                 try:
                     result[key] = fn()
