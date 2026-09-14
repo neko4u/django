@@ -84,6 +84,17 @@ def _session_key(uid):
     return f'frp:session:{uid}'
 
 
+def _hgetall_str(key):
+    raw = _redis().hgetall(key) or {}
+    out = {}
+    for k, v in raw.items():
+        kk = k.decode() if isinstance(k, bytes) else str(k)
+        vv = v.decode() if isinstance(v, bytes) else str(v)
+        out[kk] = vv
+    return out
+
+
+
 def _to_ts(dt):
     """datetime(naive本地) -> int 秒"""
     return int(dt.timestamp())
