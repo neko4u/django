@@ -448,3 +448,41 @@ def release_expired_bans():
             except Exception:
                 pass
     return released
+
+
+# 巡检任务5：会话层孤儿清理（redis 与 DB 不一致时, 一律以 DB 为准）
+# 防止抖动导致正常用户被误认为非法用户拉黑
+
+def cleanup_orphan_sessions():
+    """
+    扫描 redis 里的会话痕迹, 与 DB active 会话比对:
+      - redis 有痕迹但 DB 无该 uid 的 active 会话 -> 清理(脏数据)
+      - DB 有 active 但 redis 无 key -> 不动(由任务2 按 start_ts+TTL 兜底结算)
+    返回清理条数。
+    """
+    r = _redis()
+
+    active_uids = {
+        str(uid) for uid in FrpSessionRecord.objects.filter(status='active')
+        .values_list('user_id', flat=True)
+    }
+
+    cleaned = 0
+
+    # 1) 在线集合中的脏 uid
+    for member in r.smembers('frp:online_uids'):
+        uid = member.decode() if isinstance(member, bytes) else str(member)
+        if uid not in active_uids:
+            _clear_redis_session(uid)
+            cleaned += 1
+
+    # 2) 残留的会话 hash（可能已不在在线集合里）
+    for key in r.scan_iter(match='frp:session:*', count=100):
+        k = key.decode() if isinstance(key, bytes) else str(key)
+        uid = k.rsplit(':', 1)[-1]
+        if uid not in active_uids:
+            r.delete(k)
+            r.srem('frp:online_uids', uid)
+            cleaned += 1
+
+    return cleaned
