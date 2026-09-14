@@ -539,6 +539,7 @@ def _dec(v):
 
 
 _ALLOC_PORT_LUA = """
+redis.replicate_commands()
 local exist = redis.call('GET', KEYS[3])
 if exist then return exist end
 local port = redis.call('SPOP', KEYS[1])
@@ -607,8 +608,10 @@ def release_remote_port(uid):
 
 def port_pool_stats():
     """端口池统计（供巡检/排查用）。"""
+    ensure_port_pool()
     r = _redis()
     return {
+
         'free': r.scard('frp:ports_free'),
         'used': r.hlen('frp:ports_owner'),
         'total': PORT_MAX - PORT_MIN + 1,

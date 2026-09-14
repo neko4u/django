@@ -71,7 +71,6 @@ urlpatterns = [
     path('api/frp_port/release/', frpServer_views.api_frp_port_release, name='frp_port_release'),
     path('api/frp_port/', frpServer_views.api_frp_port_current, name='frp_port_current'),
     #pointsBalanceSystem
-
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),

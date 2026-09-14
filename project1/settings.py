@@ -266,6 +266,6 @@ CACHES = {
 
 JWT_CONFIG = {
     'ALGORITHM': 'HS256',
-    'ACCESS_TOKEN_EXPIRE_MINUTES': 60 * 24,
+    'ACCESS_TOKEN_EXPIRE_MINUTES': 60 * 24 *3, #3天!
 }
 TOKEN_SECRET_KEY = config.get('token_secret_key')
