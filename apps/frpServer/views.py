@@ -219,7 +219,7 @@ def api_frp_session_status(request):
 # fork: 远程端口租赁接口（FrpClient 调用）
 #   分配时点: 客户端点「连接」时 allocate; 断开时 release
 
-FRP_PUBLIC_HOST = 'ai.sorielflow.com'   # 对外展示的访问域名(客户端拼接 host:port)
+FRP_PUBLIC_HOST = "connections.sorielflow.com"   # 对外展示的访问域名(客户端拼接 host:port)
 
 
 # POST /api/frp_port/allocate/ — 分配一个远程端口（需先开启时长）
