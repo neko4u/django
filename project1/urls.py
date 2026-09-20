@@ -70,6 +70,7 @@ urlpatterns = [
     path('api/frp_port/allocate/', frpServer_views.api_frp_port_allocate, name='frp_port_allocate'),
     path('api/frp_port/release/', frpServer_views.api_frp_port_release, name='frp_port_release'),
     path('api/frp_port/', frpServer_views.api_frp_port_current, name='frp_port_current'),
+    path('api/user_profile/', frpServer_views.api_user_profile, name='user_profile'),
     #pointsBalanceSystem
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
     #llm_chat

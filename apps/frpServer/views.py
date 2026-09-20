@@ -261,3 +261,20 @@ def api_frp_port_current(request):
         return _json_err('未登录或登录已过期', code=401, http=401)
     port = frp_services.get_remote_port(user.uid)
     return _json_ok(remote_port=port or 0, host=FRP_PUBLIC_HOST)
+
+
+# GET /api/user_profile/ — 当前用户资料(客户端取头像用, JWT 鉴权)
+@csrf_exempt
+def api_user_profile(request):
+    if request.method != 'GET':
+        return _json_err('非法请求', http=405)
+    user = _session_user(request)
+    if not user:
+        return _json_err('未登录或登录已过期', code=401, http=401)
+    avatar = user.avatar.url if user.avatar else ''
+    return _json_ok(
+        uid=user.uid,
+        name=user.name,
+        avatar=avatar,                 # 相对路径, 形如 /media/avatars/10001.png
+    )
+
