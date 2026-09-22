@@ -64,9 +64,23 @@
     {% endif %}
 </div>
 
-<div id="sec2-content" class="tab-content">
-    <h1 style="font-size: 50px;">点击下载</h1>
+<div id="sec5-content" class="tab-content">
+    <div style="max-width:520px;padding:0 20px;">
+        <h1 style="font-size:32px;margin:0 0 14px;">下载SorielConnection!</h1>
+        <p style="font-size:15px;line-height:1.9;color:#5f6b7a;margin:0 0 20px;">
+            下载客户端(Windows)
+            当前最新版本:0.1.0
+        </p>
+        <a href="{% url 'download_file' %}"
+           style="font-size:16px;color:#2b7de9;word-break:break-all;">
+            点击下载
+        </a>
+        <p style="font-size:13px;color:#8a97a8;margin:18px 0 0;line-height:1.8;">
+            点击上面的地址即可下载。若浏览器没有开始下载，请右键选择「链接另存为」。
+        </p>
+    </div>
 </div>
+
 
 <div id="sec4-content" class="tab-content">
     <h1>历史连接</h1>
@@ -74,68 +88,3 @@
 
 
 {% endblock %}
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index</title>
-</head>
-<body>
-    <nav class="top-nav">
-        <ul class="top-nav-links">
-            <li ><a href="{% url 'index' %}">首页</a></li>
-            <li><a href="#">首页</a></li>
-            <li><a href="#">content2</a></li>
-            <li><a href="#">content3</a></li>
-        </ul>
-        <div class="top-nav-links">
-        </div>
-        <img src="https://via.placeholder.com/40" alt="用户头像" class="user-avatar">
-    </nav>
-
-    <div class="user-panel" id="userPanel">
-        <div class="panel-content">
-            <div class="user-info">
-                <h3>帐号信息</h3>
-                <p><span class="user-panel-info1">  用户名:</span><span class="user-panel-info2">{{ request.session.info.account }}</span></p>
-                <p><span class="user-panel-info1">  UID:</span><span class="user-panel-info2">{{ request.session.info.uid }}</span></p>
-                <p><span class="user-panel-info1">  注册时间:</span><span class="user-panel-info2">{{ request.session.info.create_time }}</span></p>
-                <p><span class="user-panel-info1">  登录时间:</span><span class="user-panel-info2">{{ request.session.info.login_time }}</span></p>
-                <p><a href="{% url 'modify_info' %}" style="text-align: center;">修改信息</a></p>
-                <form action="{% url 'logout' %}" method="post" style="text-align: center;">
-                    {% csrf_token %}
-                    <button type="submit">退出登录</button>
-                </form>
-            </div>
-        </div>
-      </div>
-
-        左侧导航
-    <nav class="left-nav">
-        <ul class="left-nav-links">
-            <li class="left-nav-li-1"></li>
-            <li class="left-nav-item"><a href="#sec1">Section 1</a></li>
-            <li class="left-nav-item"><a href="#sec2">Section 2</a></li>
-            <li class="left-nav-item"><a href="#sec3">Section 3</a></li>
-            <li class="left-nav-item"><a href="#sec4">Section 4</a></li>
-        </ul>
-    </nav>
-    
-    <section id="sec1" class="content-section">
-        <h1><a href="{% url 'page1' %}">WorkPlace1</a></h1>
-    </section>
-
-    <section id="sec2" class="content-section">
-        <h2>2</h2>
-    </section>
-
-    <section id="sec3" class="content-section">
-        <h2>3</h2>
-    </section>
-
-    <section id="sec4" class="content-section">
-        <h2>4</h2>
-    </section>
-</body>
-</html> -->

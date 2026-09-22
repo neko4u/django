@@ -15,4 +15,4 @@ media/
 logs/
 apps/captcha/assets/captcha_bg/*
 !apps/captcha/assets/captcha_bg/.gitkeep
-downloads/
+/downloads/
