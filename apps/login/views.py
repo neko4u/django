@@ -189,9 +189,10 @@ def frp_user_login(request):
 
 
 
-def user_logout(request):
+def user_logout(request, mode='general'):
     request.session.flush()
-    return redirect('login')
+    return redirect('flogin' if mode == 'frp' else 'login')
+
 
 def register(request):
     if request.method == "POST":

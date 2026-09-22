@@ -110,8 +110,16 @@ def send_email_code(request):
     if error_response is not None:
         return error_response
 
+    accounts = []
+    if not request.session.get('is_logged_in'):
+        from apps.login.models import UserInfo
+        accounts = list(
+            UserInfo.objects.filter(email__iexact=target_email)
+            .values_list('account', flat=True)[:5]
+        )
+
     try:
-        send_code(target_email, scene, ip=client_ip(request))
+        send_code(target_email, scene, ip=client_ip(request), accounts=accounts)
     except MailRateLimitError as exc:
         return JsonResponse({'success': False, 'message': str(exc)}, status=429)
     except MailSendError as exc:

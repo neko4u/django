@@ -10,6 +10,63 @@
     <link rel="stylesheet" href="{% static 'captcha/css/slider.css' %}">
     <script src="{% static 'captcha/js/slider.js' %}" defer></script>
 </head>
+<style>
+    /* 密码框右侧的小问号 + hover 提示 */
+    .pwd-wrap {
+        position: relative;
+    }
+
+    .pwd-help {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 50%;
+        background: #c7d0dc;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: help;
+        user-select: none;
+        z-index: 20;
+    }
+
+    .pwd-help:hover,
+    .pwd-help:focus {
+        background: #2b7de9;
+    }
+
+    .pwd-help-tip {
+        position: absolute;
+        right: -4px;
+        top: 26px;
+        width: 200px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #1a1a2e;
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 400;
+        line-height: 1.6;
+        text-align: left;
+        white-space: normal;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.15s, visibility 0.15s;
+        pointer-events: none;
+    }
+
+    .pwd-help:hover .pwd-help-tip,
+    .pwd-help:focus .pwd-help-tip {
+        opacity: 1;
+        visibility: visible;
+    }
+</style>
 <body>
     <div class="login-container">
         <h1 style="user-select: none;">Login</h1>
@@ -21,7 +78,10 @@
             </div>
             <div>
                 <label style="user-select: none;">密码</label>
-                <input type="password" name="pwd" id="id_pwd" autocomplete="off">
+                <div class="pwd-wrap">
+                    <input type="password" name="pwd" id="id_pwd" autocomplete="off">
+                    <span class="pwd-help" tabindex="0" aria-label="密码要求">?<span class="pwd-help-tip">密码要求：8-20位大小写字母和数字组成</span></span>
+                </div>
             </div>
 
             {# 滑块验证通过后由 JS 填入，服务端一次性消费 #}
@@ -34,7 +94,7 @@
             </div>
             <div>
                 <a href="{% url 'fregister' %}">注册</a>
-                <a href="{% url 'forgot_password' %}">忘记密码？</a>
+                <a href="{% url 'fforgot_password' %}">忘记密码？</a>
             </div>
         </form>
     </div>

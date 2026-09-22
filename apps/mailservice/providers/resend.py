@@ -41,7 +41,7 @@ class ResendSMTPProvider(BaseMailProvider):
     def send_verification_code(self, to_email, code, scene, expire_minutes):
         from django.core.mail import EmailMultiAlternatives, get_connection
 
-        subject, text, html = self.build_message(code, scene, expire_minutes)
+        subject, text, html = self.build_message(code, scene, expire_minutes, accounts)
         from_email = (
             f'{self.sender_name} <{self.from_email}>' if self.sender_name else self.from_email
         )

@@ -21,7 +21,28 @@ logger = logging.getLogger(__name__)
 class ConsoleMailProvider(BaseMailProvider):
     name = 'console'
 
-    def send_verification_code(self, to_email, code, scene, expire_minutes):
+    def send_verification_code(self, to_email, code, scene, expire_minutes, accounts=None):
+        subject, text, html = self.build_message(code, scene, expire_minutes, accounts)
+
+        names = [str(a).strip() for a in (accounts or []) if str(a).strip()]
+
+        logger.warning(
+            '\n'
+            '================ 邮件验证码（未真实发送，仅打印）================\n'
+            '  场景    : %s\n'
+            '  收件人  : %s\n'
+            '  验证码  : %s\n'
+            '  有效期  : %s 分钟\n'
+            '  登录帐号: %s\n'
+            '  主题    : %s\n'
+            '===============================================================',
+            scene, to_email, code, expire_minutes,
+            '、'.join(names) if names else '(无)',
+            subject,
+        )
+
+        return f'console:{scene}:{to_email}'
+
         subject, text, html = self.build_message(code, scene, expire_minutes)
 
         logger.warning(

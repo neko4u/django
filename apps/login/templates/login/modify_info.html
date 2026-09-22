@@ -69,9 +69,11 @@
     {% if messages %}
     <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:2600;width:min(420px,92vw);">
         {% for message in messages %}
-        <div style="padding:11px 14px;border-radius:8px;margin-bottom:10px;font-size:0.88rem;
-                    {% if message.tags == 'success' %}background:#e8f7ee;color:#146c2e;border:1px solid #bfe6cd;
-                    {% else %}background:#fdecea;color:#b3261e;border:1px solid #f5c6c2;{% endif %}">
+            {% if message.tags == 'success' %}
+            <div style="padding:11px 14px;border-radius:8px;margin-bottom:10px;font-size:0.88rem;background:#e8f7ee;color:#146c2e;border:1px solid #bfe6cd;">
+            {% else %}
+            <div style="padding:11px 14px;border-radius:8px;margin-bottom:10px;font-size:0.88rem;background:#fdecea;color:#b3261e;border:1px solid #f5c6c2;">
+            {% endif %}
             {{ message }}
         </div>
         {% endfor %}

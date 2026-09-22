@@ -123,7 +123,9 @@ def send_code(email, scene, ip=''):
     expire_minutes = max(1, int(mailconf.CODE_EXPIRE_SECONDS) // 60)
 
     try:
-        get_mail_provider().send_verification_code(email, code, scene, expire_minutes)
+        get_mail_provider().send_verification_code(
+            email, code, scene, expire_minutes, accounts=accounts or []
+        )
     except MailSendError:
         # 发送失败就把间隔锁释放掉
         try:

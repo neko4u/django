@@ -54,6 +54,7 @@ urlpatterns = [
     path('findex/', login_views.findex, name='findex'),
     path('flogin/', login_views.frp_user_login, name='flogin'),
     path('fregister/', login_views.frp_register, name='fregister'),
+    path('flogout/', login_views.user_logout, {'mode': 'frp'}, name='flogout'),
         # frp 版修改资料 / 修改密码
     path('fmodify_info/', login_views.modify_info,
          {'mode': 'frp'}, name='fmodify_info'),
@@ -64,6 +65,8 @@ urlpatterns = [
          {'mode': 'general', 'scope': 'logged'}, name='change_password'),
     path('forgot_password/', login_views.change_password,
          {'mode': 'general', 'scope': 'anonymous'}, name='forgot_password'),
+    path('fforgot_password/', login_views.change_password,
+         {'mode': 'frp', 'scope': 'anonymous'}, name='fforgot_password'),
     path('manage/', frpServer_views.frp_index, name='frp_manage'),
     path('api/start/', frpServer_views.api_frp_start, name='frp_api_start'),
     path('api/stop/', frpServer_views.api_frp_stop, name='frp_api_stop'),
