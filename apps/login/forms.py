@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from .models import UserInfo
 import re
 
-PWD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w!@#$%^&*()_+\-=$$$${}|;:\'",.<>/?]{8,20}$'
+PWD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w!@#$%^&*()_+\-=$$[]$${}|;:\'",.<>/?]{8,20}$'
 
 EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$'
 

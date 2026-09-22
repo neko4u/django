@@ -96,7 +96,8 @@
                     <p><span class="user-panel-info1">  UID:</span><span class="user-panel-info2">{{ request.session.info.uid }}</span></p>
                     <p><span class="user-panel-info1">  注册时间:</span><span class="user-panel-info2">{{ request.session.info.create_time }}</span></p>
                     <p><span class="user-panel-info1">  登录时间:</span><span class="user-panel-info2">{{ request.session.info.login_time }}</span></p>
-                    <p style="text-align: center;"><a href="{% url 'modify_info' %}">修改信息</a></p>
+                    <p style="text-align: center;"><a href="{% url 'fmodify_info' %}">修改信息</a></p>
+                    <p style="text-align: center;"><a href="{% url 'fchange_password' %}">修改密码</a></p>
                     <form action="{% url 'logout' %}" method="post" style="text-align: center;">
                         {% csrf_token %}
                         <button type="submit">退出登录</button>

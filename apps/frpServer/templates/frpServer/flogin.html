@@ -1,41 +1,15 @@
 {% load static %}
-<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-
-<html lang="en">
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <link rel="stylesheet" href="{% static 'login/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'captcha/css/slider.css' %}">
+    <script src="{% static 'captcha/js/slider.js' %}" defer></script>
 </head>
-<script>
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        // 构造 FormData 对象，自动包含表单字段和 CSRF token
-        const formData = new FormData(this);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'  // 标记 AJAX 请求
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.redirect_url;
-            } else {
-                document.getElementById('errorMsg').innerText = data.error;
-            }
-        })
-        .catch(error => {
-            console.error('请求失败:', error);
-            document.getElementById('errorMsg').innerText = '网络错误，请稍后重试';
-        });
-    });
-</script>
 <body>
     <div class="login-container">
         <h1 style="user-select: none;">Login</h1>
@@ -43,22 +17,93 @@
             {% csrf_token %}
             <div>
                 <label style="user-select: none;">用户名</label>
-                <input type="text" name="user">
+                <input type="text" name="user" id="id_user" autocomplete="off">
             </div>
             <div>
                 <label style="user-select: none;">密码</label>
-                <input type="password" name="pwd">
+                <input type="password" name="pwd" id="id_pwd" autocomplete="off">
             </div>
-            {% if error %}
-                <div class="alert alert-{{ message.tags }}" style="user-select: none; color: red;">{{ error }}</div>
-            {% endif %}
+
+            {# 滑块验证通过后由 JS 填入，服务端一次性消费 #}
+            <input type="hidden" name="slider_ticket" id="sliderTicket" value="">
+
+            <div id="errorMsg" style="user-select:none;color:red;font-size:15px;min-height:18px;">{% if error %}{{ error }}{% endif %}</div>
+
             <div>
-                <button type="submit">登录</button>
+                <button type="submit" id="loginBtn">登录</button>
             </div>
             <div>
-                <a href="{% url 'fregister' %}" style="color: aqua;">注册</a>
+                <a href="{% url 'fregister' %}">注册</a>
+                <a href="{% url 'forgot_password' %}">忘记密码？</a>
             </div>
         </form>
     </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        var form = document.getElementById('loginForm');
+        var btn = document.getElementById('loginBtn');
+        var errorBox = document.getElementById('errorMsg');
+        var ticketInput = document.getElementById('sliderTicket');
+        var submitting = false;
+
+        function showError(msg) {
+            errorBox.innerText = msg || '';
+        }
+
+        function done() {
+            submitting = false;
+            btn.disabled = false;
+            btn.innerText = '登录';
+        }
+
+        function doSubmit() {
+            if (submitting) return;
+            submitting = true;
+            btn.disabled = true;
+            btn.innerText = '登录中...';
+
+            fetch(form.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    done();
+
+                    if (data.success) {
+                        window.location.href = data.redirect_url || '{% url "findex" %}';
+                        return;
+                    }
+
+                    showError(data.error || '登录失败');
+
+                    // 服务端要求先过滑块（连续输错 2 次后会触发）
+                    if (data.need_slider && window.SliderCaptcha) {
+                        SliderCaptcha.open({
+                            onSuccess: function (ticket) {
+                                ticketInput.value = ticket;
+                                showError('');
+                                doSubmit();          // 拿到 ticket 后自动重试一次
+                            }
+                        });
+                    }
+                })
+                .catch(function () {
+                    done();
+                    showError('网络错误，请稍后重试');
+                });
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            doSubmit();
+        });
+    }());
+    </script>
 </body>
 </html>
