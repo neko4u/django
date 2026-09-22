@@ -109,8 +109,16 @@ def _check_limits(email, ip):
 
 # ========= 发送 
 
-def send_code(email, scene, ip=''):
-    """发送验证码。失败时抛 MailSendError / MailRateLimitError"""
+def send_code(email, scene, ip='', accounts=None):
+    """发送验证码。失败时抛 MailSendError / MailRateLimitError
+
+    accounts：该邮箱绑定的登录帐号列表（找回密码场景用）。
+    传进去后邮件正文里会多一行「您绑定的登录帐号：xxx」。
+
+    注意：这个签名必须和 apps/mailservice/views.py 的调用点保持一致
+    （views.py 传的是 send_code(..., accounts=accounts)），
+    漏了参数会直接 TypeError，整个发信接口 500。
+    """
     email = normalize_email(email)
     if scene not in SCENES:
         raise MailSendError('未知的验证码场景')
