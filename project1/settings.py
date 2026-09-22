@@ -72,6 +72,11 @@ INSTALLED_APPS = [
     'apps.frpServer',
     'apps.helpdocs',
     'apps.llm_chat',
+            'apps.mailservice': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     'apps.llm_config',
     'apps.pointsBalanceSystem',
     'apps.fault_tree',
