@@ -455,13 +455,12 @@
                 </div>
             </div>
 
-            <div style="display:block;width:100%;margin-top:6px;">
-                <div id="sliderBox"></div>
-            </div>
             <input type="hidden" name="slider_ticket" id="sliderTicket" value="">
             <input type="hidden" name="email_ticket" id="emailTicket" value="">
 
-            <button type="submit" id="saveBtn" disabled>请先完成安全验证</button>
+            <button type="submit" id="saveBtn">保存</button>
+            <div id="formError" style="display:none;color:#b3261e;font-size:0.86rem;text-align:center;margin-top:8px;"></div>
+
             {% else %}
             <button type="submit" id="saveBtn">保存</button>
             {% endif %}
@@ -480,18 +479,18 @@
     <script>
         (function () {
             'use strict';
-        
-            var IS_FRP = {% if is_frp %}true{% else %}false{% endif %};
+    
+            var IS_FRP = '{{ is_frp|yesno:"1,0" }}' === '1';
             if (!IS_FRP) { return; }
-        
+    
             var SEND_URL = '/api/send-email-code/';
             var VERIFY_URL = '/api/verify-email-code/';
-        
+    
             function getCookie(name) {
                 var m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
                 return m ? decodeURIComponent(m[2]) : '';
             }
-        
+    
             function post(url, data) {
                 var body = new URLSearchParams();
                 Object.keys(data).forEach(function (k) { body.append(k, data[k]); });
@@ -506,9 +505,10 @@
                     body: body.toString()
                 }).then(function (r) { return r.json(); });
             }
-        
+    
             var form = document.querySelector('form');
             var saveBtn = document.getElementById('saveBtn');
+            var errorBox = document.getElementById('formError');
             var sliderTicket = document.getElementById('sliderTicket');
             var emailTicket = document.getElementById('emailTicket');
             var emailInput = document.querySelector('input[name="email"]');
@@ -519,79 +519,99 @@
             var codeMsg = document.getElementById('emailCodeMsg');
             var sendBtn = document.getElementById('sendEmailCodeBtn');
             var verifyBtn = document.getElementById('verifyEmailCodeBtn');
-        
-            var sliderOk = false;
+    
             var emailOk = false;
-        
-            function emailChanged() {
-                if (!emailInput) return false;
-                return emailInput.value.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
+            var passed = false;          // 滑块通过后置 true，第二次提交直接放行
+    
+            function showError(msg) {
+                if (!errorBox) return;
+                errorBox.innerText = msg || '';
+                errorBox.style.display = msg ? 'block' : 'none';
             }
-        
+    
             function setCodeMsg(text, color) {
                 codeMsg.textContent = text || '';
                 codeMsg.style.color = color || '#5f6b7a';
             }
-        
-            function refresh() {
+    
+            function emailChanged() {
+                if (!emailInput) return false;
+                return emailInput.value.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
+            }
+    
+            // 改邮箱才出现验证码区；改回原邮箱则清掉已通过的邮箱验证
+            function refreshCodeBox() {
                 var changed = emailChanged();
                 if (codeBox) codeBox.style.display = changed ? 'block' : 'none';
-        
-                if (!changed) {
+    
+                if (!changed && emailOk) {
                     emailOk = false;
                     if (emailTicket) emailTicket.value = '';
-                }
-        
-                var ready = sliderOk && (!changed || emailOk);
-                saveBtn.disabled = !ready;
-                if (ready) {
-                    saveBtn.innerText = '保存';
-                } else if (!sliderOk) {
-                    saveBtn.innerText = '请先完成安全验证';
-                } else {
-                    saveBtn.innerText = '请先完成邮箱验证';
+                    if (codeInput) { codeInput.disabled = false; }
+                    if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = '获取验证码'; }
+                    if (verifyBtn) { verifyBtn.disabled = true; }
+                    setCodeMsg('', '');
                 }
             }
     
-            function mountSlider() {
-                if (!window.SliderCaptcha) {
-                    saveBtn.innerText = '验证组件加载失败，请刷新页面';
-                    return;
+            if (emailInput) {
+                emailInput.addEventListener('input', refreshCodeBox);
+                emailInput.addEventListener('blur', refreshCodeBox);
+            }
+            refreshCodeBox();
+    
+            // ---------------- 提交：先弹滑块，验证通过后才真正提交 ----------------
+            form.addEventListener('submit', function (e) {
+                if (passed) { return true; }        // 滑块已通过，这次放行走原生提交
+    
+                // 本页既有的校验脚本（昵称/邮箱/手机格式）如果已经拦下，
+                // 就别再弹滑块了，否则会同时看到两个错误
+                if (e.defaultPrevented) { return false; }
+    
+                e.preventDefault();
+                showError('');
+    
+                // 改了邮箱但还没验证邮箱验证码
+                if (emailChanged() && !emailOk) {
+                    showError('邮箱已修改，请先完成邮箱验证码验证');
+                    if (codeBox) { codeBox.scrollIntoView({ block: 'center' }); }
+                    return false;
                 }
-                SliderCaptcha.mount('#sliderBox', {
+    
+                // 滑块弹窗（默认不显示在页面上，只在这里出现）
+                if (!window.SliderCaptcha) {
+                    showError('验证组件未加载成功，请刷新页面后重试');
+                    return false;
+                }
+    
+                window.SliderCaptcha.open({
                     onSuccess: function (ticket) {
                         sliderTicket.value = ticket;
-                        sliderOk = true;
-                        refresh();
+                        passed = true;
+                        showError('');
+                        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = '保存中...'; }
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form.submit();
+                        }
                     },
-                    onFail: function () {
-                        sliderTicket.value = '';
-                        sliderOk = false;
-                        refresh();
+                    onFail: function (msg) {
+                        window.SliderCaptcha.close();
+                        showError(msg || '验证失败，请重新点击保存');
                     }
                 });
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', mountSlider);
-            } else {
-                mountSlider();
-            }
-
-        
-            // 改邮箱时才出现验证码区
-            if (emailInput) {
-                emailInput.addEventListener('input', refresh);
-                emailInput.addEventListener('blur', refresh);
-            }
-        
-            // 发送验证码（服务端固定发到"旧邮箱"，不看前端传的邮箱）
+                return false;
+            });
+    
+            // ---------------- 发送邮箱验证码 ----------------
+            // 服务端固定发到"当前账号的旧邮箱"，不看前端传的邮箱
             sendBtn.addEventListener('click', function () {
-                if (!emailChanged()) return;
+                if (!emailChanged()) { return; }
                 sendBtn.disabled = true;
                 sendBtn.innerText = '发送中...';
                 setCodeMsg('', '');
-        
+    
                 post(SEND_URL, { email: originalEmail, scene: 'change_email' })
                     .then(function (data) {
                         if (data.success) {
@@ -620,22 +640,22 @@
                         sendBtn.innerText = '获取验证码';
                     });
             });
-        
-            // 校验验证码
+    
+            // ---------------- 校验邮箱验证码 ----------------
             codeInput.addEventListener('input', function () {
                 var ok = this.value.trim().length >= 4;
                 verifyBtn.disabled = !ok;
                 verifyBtn.style.color = ok ? '#2b7de9' : '#9aa7b6';
                 verifyBtn.style.cursor = ok ? 'pointer' : 'not-allowed';
             });
-        
+    
             verifyBtn.addEventListener('click', function () {
                 var code = codeInput.value.trim();
-                if (!code) return;
+                if (!code) { return; }
                 verifyBtn.disabled = true;
                 verifyBtn.innerText = '验证中...';
                 setCodeMsg('', '');
-        
+    
                 post(VERIFY_URL, { email: originalEmail, code: code, scene: 'change_email' })
                     .then(function (data) {
                         verifyBtn.innerText = '验证验证码';
@@ -643,8 +663,9 @@
                             emailTicket.value = data.ticket;
                             emailOk = true;
                             codeInput.disabled = true;
-                            setCodeMsg('邮箱验证通过', '#22c55e');
-                            refresh();
+                            setCodeMsg('邮箱验证通过，可以保存了', '#22c55e');
+                            showError('');
+                            verifyBtn.disabled = true;
                         } else {
                             setCodeMsg(data.message || '验证码错误或已过期', '#e5534b');
                             verifyBtn.disabled = false;
@@ -656,19 +677,9 @@
                         setCodeMsg('网络错误，请稍后重试', '#e5534b');
                     });
             });
-        
-            // 兜底：即使按钮被绕过（如回车提交），也不允许未验证就提交
-            form.addEventListener('submit', function (e) {
-                if (!sliderOk || (emailChanged() && !emailOk)) {
-                    e.preventDefault();
-                    refresh();
-                    return false;
-                }
-            });
-        
-            refresh();
         }());
-        </script>
+    </script>
+    
         
 </body>
 </html>

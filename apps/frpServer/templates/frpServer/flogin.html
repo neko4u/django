@@ -40,70 +40,79 @@
     </div>
 
     <script>
-    (function () {
-        'use strict';
-
-        var form = document.getElementById('loginForm');
-        var btn = document.getElementById('loginBtn');
-        var errorBox = document.getElementById('errorMsg');
-        var ticketInput = document.getElementById('sliderTicket');
-        var submitting = false;
-
-        function showError(msg) {
-            errorBox.innerText = msg || '';
-        }
-
-        function done() {
-            submitting = false;
-            btn.disabled = false;
-            btn.innerText = '登录';
-        }
-
-        function doSubmit() {
-            if (submitting) return;
-            submitting = true;
-            btn.disabled = true;
-            btn.innerText = '登录中...';
-
-            fetch(form.getAttribute('action') || window.location.href, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    done();
-
-                    if (data.success) {
-                        window.location.href = data.redirect_url || '{% url "findex" %}';
-                        return;
-                    }
-
-                    showError(data.error || '登录失败');
-
-                    // 服务端要求先过滑块（连续输错 2 次后会触发）
-                    if (data.need_slider && window.SliderCaptcha) {
-                        SliderCaptcha.open({
-                            onSuccess: function (ticket) {
-                                ticketInput.value = ticket;
-                                showError('');
-                                doSubmit();          // 拿到 ticket 后自动重试一次
-                            }
-                        });
-                    }
+        (function () {
+            'use strict';
+    
+            var form = document.getElementById('loginForm');
+            var btn = document.getElementById('loginBtn');
+            var errorBox = document.getElementById('errorMsg');
+            var ticketInput = document.getElementById('sliderTicket');
+            var submitting = false;
+    
+            function showError(msg) {
+                errorBox.innerText = msg || '';
+            }
+    
+            function done() {
+                submitting = false;
+                btn.disabled = false;
+                btn.innerText = '登录';
+            }
+    
+            function doSubmit() {
+                if (submitting) { return; }
+                submitting = true;
+                btn.disabled = true;
+                btn.innerText = '登录中...';
+    
+                fetch(form.getAttribute('action') || window.location.href, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
                 })
-                .catch(function () {
-                    done();
-                    showError('网络错误，请稍后重试');
-                });
-        }
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            doSubmit();
-        });
-    }());
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        done();
+    
+                        if (data.success) {
+                            window.location.href = data.redirect_url || '{% url "findex" %}';
+                            return;
+                        }
+    
+                        showError(data.error || '登录失败');
+    
+                        // 服务端判定"本次需要先过滑块"（连续输错达到阈值后），弹出滑块弹窗
+                        if (data.need_slider) {
+                            if (!window.SliderCaptcha) {
+                                showError('验证组件未加载成功，请刷新页面后重试');
+                                return;
+                            }
+                            window.SliderCaptcha.open({
+                                onSuccess: function (ticket) {
+                                    ticketInput.value = ticket;
+                                    showError('');
+                                    doSubmit();          // 拿到 ticket 后自动重试登录
+                                },
+                                onFail: function (msg) {
+                                    window.SliderCaptcha.close();
+                                    showError(msg || '验证失败，请重新点击登录');
+                                }
+                            });
+                        }
+                    })
+                    .catch(function () {
+                        done();
+                        showError('网络错误，请稍后重试');
+                    });
+            }
+    
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                doSubmit();
+            });
+        }());
     </script>
+    
 </body>
 </html>
