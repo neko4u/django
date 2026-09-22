@@ -6,18 +6,17 @@
 from django.conf import settings
 
 _DEFAULTS = {
-    # 'tencent'（腾讯云 SES API）或 'resend'（自有域名 SMTP）
-    'PROVIDER': 'tencent',
+    # 'console'（不发信，验证码打到日志，用于自测）
+    # 'resend' （Resend + 自有域名 SMTP，正式方案）
+    'PROVIDER': 'console',
     # 发件人显示名
     'FROM_NAME': 'Soriel',
-    # 方案A：腾讯云邮件推送
-    'TENCENT': {},
-    # 方案B：Resend
+    # Resend + 自有域名
     'RESEND': {},
-    # 日发送上限（腾讯云免费额度 1000，Resend 每日 100）
-    'DAILY_LIMIT': 1000,
-    # 总发送上限（腾讯云免费额度是一次性的，用这个兜底）
-    'TOTAL_LIMIT': 1000,
+    # 每日发送上限（Resend 免费额度：每日 100 封）
+    'DAILY_LIMIT': 100,
+    # 总量硬刹车，防止配置写错导致无限发信；正常用量远达不到
+    'TOTAL_LIMIT': 90000,
     # 验证码位数
     'CODE_LENGTH': 6,
     # 验证码有效期（秒）

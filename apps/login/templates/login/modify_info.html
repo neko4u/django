@@ -552,9 +552,12 @@
                     saveBtn.innerText = '请先完成邮箱验证';
                 }
             }
-        
-            // 滑块
-            if (window.SliderCaptcha) {
+    
+            function mountSlider() {
+                if (!window.SliderCaptcha) {
+                    saveBtn.innerText = '验证组件加载失败，请刷新页面';
+                    return;
+                }
                 SliderCaptcha.mount('#sliderBox', {
                     onSuccess: function (ticket) {
                         sliderTicket.value = ticket;
@@ -568,6 +571,13 @@
                     }
                 });
             }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', mountSlider);
+            } else {
+                mountSlider();
+            }
+
         
             // 改邮箱时才出现验证码区
             if (emailInput) {

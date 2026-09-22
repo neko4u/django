@@ -311,25 +311,12 @@ CAPTCHA = {
 _mail_conf = config.get('mail', {})
 
 MAIL = {
-    # 'tencent' = 腾讯云邮件推送 API（现在用这个）
-    # 'resend'  = 自有域名 + Resend SMTP（以后换域名时改成这个即可，业务代码不用动）
-    'PROVIDER': _mail_conf.get('provider', 'tencent'),
+    # 'console' = 不发信，验证码打到服务器日志（域名/账号没准备好时先用这个自测）
+    # 'resend'  = 自有域名 + Resend SMTP（正式方案，域名配好后改成这个）
+    'PROVIDER': _mail_conf.get('provider', 'console'),
     'FROM_NAME': _mail_conf.get('from_name', 'Soriel'),
 
-    # 方案 A：腾讯云邮件推送（个人实名认证不支持 SMTP，只能用 API）
-    'TENCENT': {
-        'secret_id': _mail_conf.get('tencent_secret_id', ''),
-        'secret_key': _mail_conf.get('tencent_secret_key', ''),
-        'region': _mail_conf.get('tencent_region', 'ap-guangzhou'),
-        'from_email': _mail_conf.get('tencent_from_email', ''),
-        'sender_name': _mail_conf.get('tencent_sender_name', 'Soriel'),
-        # 模板方式（推荐，控制台建好模板填 ID 即可）；留空则走自定义 HTML 正文
-        'template_id': _mail_conf.get('tencent_template_id', ''),
-        'template_code_key': _mail_conf.get('tencent_template_code_key', 'code'),
-        'template_minutes_key': _mail_conf.get('tencent_template_minutes_key', 'minutes'),
-    },
-
-    # 方案 B：Resend + Cloudflare
+    # Resend + Cloudflare（正式方案）
     'RESEND': {
         'smtp_host': _mail_conf.get('resend_smtp_host', 'smtp.resend.com'),
         'smtp_port': _mail_conf.get('resend_smtp_port', 587),
@@ -340,9 +327,10 @@ MAIL = {
         'use_tls': _mail_conf.get('resend_use_tls', True),
     },
 
-    # 额度控制：腾讯云 1000 封是一次性的，用完不会自动停，所以这里必须自己计数
-    'DAILY_LIMIT': _mail_conf.get('daily_limit', 1000),
-    'TOTAL_LIMIT': _mail_conf.get('total_limit', 1000),
+    # 额度控制（Resend 免费额度：每日 100 封）
+    'DAILY_LIMIT': _mail_conf.get('daily_limit', 100),
+    # 总量硬刹车，防止配置写错导致无限发信；正常用量远达不到
+    'TOTAL_LIMIT': _mail_conf.get('total_limit', 90000),
 
     # 验证码安全参数
     'CODE_LENGTH': _mail_conf.get('code_length', 6),
