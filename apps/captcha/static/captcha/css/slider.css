@@ -1,0 +1,233 @@
+/* apps/captcha/static/captcha/css/slider.css
+   滑块验证码样式。颜色沿用项目已有的 CSS 变量，宿主页面没定义时用兜底值。 */
+
+   .sc-root {
+    --sc-accent: var(--accent, #2b7de9);
+    --sc-accent-dark: #1a6ad4;
+    --sc-border: var(--border, #d0d7e2);
+    --sc-bg: var(--bg-primary, #ffffff);
+    --sc-bg-soft: var(--bg-secondary, #f5f8ff);
+    --sc-text: var(--text-primary, #1a1a2e);
+    --sc-text-soft: var(--text-secondary, #5f6b7a);
+    --sc-danger: var(--danger, #e5534b);
+    --sc-success: var(--success, #22c55e);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--sc-text);
+}
+
+/* ---------- 弹窗模式 ---------- */
+.sc-root.sc-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 26, 40, 0.55);
+    padding: 16px;
+}
+
+/* ---------- 内联模式 ---------- */
+.sc-root.sc-inline {
+    display: block;
+    width: 100%;
+}
+
+.sc-panel {
+    width: 320px;
+    max-width: 100%;
+    background: var(--sc-bg);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.sc-inline .sc-panel {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    box-shadow: none;
+    border: 1px solid var(--sc-border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.sc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.sc-title {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.sc-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sc-icon-btn {
+    width: 26px;
+    height: 26px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--sc-text-soft);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.sc-icon-btn:hover {
+    background: var(--sc-bg-soft);
+    color: var(--sc-text);
+}
+
+/* ---------- 图片区 ---------- */
+.sc-stage {
+    position: relative;
+    width: 100%;
+    line-height: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--sc-bg-soft);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.sc-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    -webkit-user-drag: none;
+}
+
+.sc-tile {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+.sc-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--sc-text-soft);
+    line-height: 1.5;
+    background: var(--sc-bg-soft);
+}
+
+/* ---------- 轨道 ---------- */
+.sc-track-wrap {
+    position: relative;
+    height: 44px;
+    margin-top: 12px;
+    border-radius: 22px;
+    background: var(--sc-bg-soft);
+    border: 1px solid var(--sc-border);
+    overflow: hidden;
+    touch-action: none;
+}
+
+.sc-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background: rgba(43, 125, 233, 0.16);
+}
+
+.sc-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--sc-text-soft);
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.sc-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 44px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--sc-bg);
+    border: 1px solid var(--sc-border);
+    border-radius: 21px;
+    color: var(--sc-accent);
+    cursor: grab;
+    touch-action: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.sc-handle:hover,
+.sc-handle.sc-active {
+    background: var(--sc-accent);
+    color: #fff;
+    border-color: var(--sc-accent);
+}
+
+.sc-handle.sc-disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.sc-handle svg {
+    pointer-events: none;
+}
+
+/* ---------- 提示 ---------- */
+.sc-msg {
+    min-height: 18px;
+    margin-top: 8px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--sc-text-soft);
+    text-align: center;
+}
+
+.sc-msg.sc-err {
+    color: var(--sc-danger);
+}
+
+.sc-msg.sc-ok {
+    color: var(--sc-success);
+}
+
+.sc-root.sc-busy .sc-track-wrap {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+@media (max-width: 420px) {
+    .sc-panel {
+        padding: 12px;
+    }
+
+    .sc-title {
+        font-size: 14px;
+    }
+}

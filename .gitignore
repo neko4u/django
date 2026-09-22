@@ -13,3 +13,5 @@ media/
 *.bak
 
 logs/
+apps/captcha/assets/captcha_bg/*
+!apps/captcha/assets/captcha_bg/.gitkeep
