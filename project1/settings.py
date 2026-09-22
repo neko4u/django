@@ -77,7 +77,9 @@ INSTALLED_APPS = [
     'apps.fault_tree',
     'apps.captcha',
     'apps.mailservice',
+    'apps.downloads',
 ]
+
 
 
 MIDDLEWARE = [

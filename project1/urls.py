@@ -88,6 +88,9 @@ urlpatterns = [
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),# 滑块验证码接口 /api/slider-captcha/  /api/verify-slider/
     path('api/', include('apps.captcha.urls')),# 邮箱验证码接口 /api/send-email-code/  /api/verify-email-code/
     path('api/', include('apps.mailservice.urls')),
+    #download  客户端下载页 /download/  + 文件 /download/file/
+    path('download/', include('apps.downloads.urls')),
+
 
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),
