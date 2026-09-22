@@ -54,6 +54,16 @@ urlpatterns = [
     path('findex/', login_views.findex, name='findex'),
     path('flogin/', login_views.frp_user_login, name='flogin'),
     path('fregister/', login_views.frp_register, name='fregister'),
+        # frp 版修改资料 / 修改密码
+    path('fmodify_info/', login_views.modify_info,
+         {'mode': 'frp'}, name='fmodify_info'),
+    path('fchange_password/', login_views.change_password,
+         {'mode': 'frp', 'scope': 'logged'}, name='fchange_password'),
+        # 通用版修改密码 / 找回密码（与 frp 版共用同一个视图和模板）
+    path('change_password/', login_views.change_password,
+         {'mode': 'general', 'scope': 'logged'}, name='change_password'),
+    path('forgot_password/', login_views.change_password,
+         {'mode': 'general', 'scope': 'anonymous'}, name='forgot_password'),
     path('manage/', frpServer_views.frp_index, name='frp_manage'),
     path('api/start/', frpServer_views.api_frp_start, name='frp_api_start'),
     path('api/stop/', frpServer_views.api_frp_stop, name='frp_api_stop'),
@@ -72,7 +82,10 @@ urlpatterns = [
     path('api/frp_port/', frpServer_views.api_frp_port_current, name='frp_port_current'),
     path('api/user_profile/', frpServer_views.api_user_profile, name='user_profile'),
     #pointsBalanceSystem
-    path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),
+    path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),# 滑块验证码接口 /api/slider-captcha/  /api/verify-slider/
+    path('api/', include('apps.captcha.urls')),# 邮箱验证码接口 /api/send-email-code/  /api/verify-email-code/
+    path('api/', include('apps.mailservice.urls')),
+
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),
     #ft

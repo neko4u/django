@@ -9,7 +9,13 @@ class UserInfo(models.Model):
     uid = models.AutoField(primary_key=True, verbose_name="UID")
     account = models.CharField(verbose_name="账户名称",max_length=32)
     password = models.CharField(verbose_name="密码",max_length=128)
-    email = models.CharField(verbose_name="邮箱",max_length=32)
+    email = models.CharField(
+        verbose_name="邮箱",
+        max_length=254,
+        db_index=True,
+        help_text="找回密码 / 修改密码 / 修改邮箱时会向该邮箱发送验证码"
+    )
+
     name = models.CharField(verbose_name="昵称",max_length=16,default="momo") #nickname
     phone = models.CharField(verbose_name="手机号码", max_length=11)
     salt = models.CharField(verbose_name="salt",max_length=128)

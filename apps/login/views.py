@@ -19,10 +19,25 @@ from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from apps.pointsBalanceSystem.models import PointExchangeActivity, UserPoint
 from apps.pointsBalanceSystem.forms import ExchangeFRPForm
+from apps.captcha.services import verify_ticket
+from apps.mailservice.codes import (
+    drop_ticket,
+    get_ticket,
+    mask_email,
+)
+from .forms import (
+    ChangePasswordByEmailForm,
+    ChangePasswordByOldForm,
+)
+
 
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_TIME = 60 * 30
+
+# 登录连续失败达到该次数后，后续登录必须先通过滑块验证（目前只在 frp 登录页生效）
+SLIDER_TRIGGER_AFTER_FAILS = 2
+
 redis_client = cache.client.get_client()
 
 logger = logging.getLogger(__name__)

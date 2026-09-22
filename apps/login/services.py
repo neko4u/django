@@ -24,9 +24,41 @@ class AuthenticationService:
     @staticmethod
     def authenticate_user(username, password):
         user = UserInfo.objects.filter(account=username).first()
-        if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        if user and AuthenticationService.verify_password(user, password):
             return user
         return None
+
+    @staticmethod
+    def verify_password(user, raw_password):
+        """校验明文密码是否匹配（bcrypt，不是 Django auth）"""
+        if not user or not user.password or raw_password is None:
+            return False
+        try:
+            return bcrypt.checkpw(
+                str(raw_password).encode('utf-8'),
+                user.password.encode('utf-8'),
+            )
+        except (ValueError, TypeError):
+            return False
+
+    @staticmethod
+    def change_password(user, new_password):
+        """修改密码。password 和 salt 两个字段必须同时写。"""
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(
+            str(new_password).encode('utf-8'), salt
+        ).decode('utf-8')
+        user.password = hashed
+        user.salt = salt.decode('utf-8')
+        user.save(update_fields=['password', 'salt'])
+        logger.info(f'用户 {user.uid} 修改了密码')
+        return user
+
+    @staticmethod
+    def find_users_by_email(email):
+        """按邮箱找账号（找回密码用）。可能返回多条 —— 说明历史数据有重复邮箱。"""
+        return UserInfo.objects.filter(email__iexact=(email or '').strip())
+
 
     @staticmethod
     def login_session_data(user):

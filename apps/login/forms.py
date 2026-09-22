@@ -3,7 +3,26 @@ from django.core.exceptions import ValidationError
 from .models import UserInfo
 import re
 
+PWD_REGEX = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w!@#$%^&*()_+\-=$$$${}|;:\'",.<>/?]{8,20}$'
+
+EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$'
+
+
+def validate_password_strength(pwd):
+    """统一的密码强度校验（注册 / 改密码共用）"""
+    if not re.match(PWD_REGEX, pwd or ''):
+        raise ValidationError("密码需8-20位且包含大小写字母和数字")
+    return pwd
+
+
+def validate_email_format(email):
+    if not re.match(EMAIL_REGEX, email or ''):
+        raise ValidationError("请填写正确的邮箱格式")
+    return email
+
+
 class LoginForm(forms.Form):
+
     user = forms.CharField(label="账户", max_length=100)
     pwd = forms.CharField(label="密码", widget=forms.PasswordInput)
 
@@ -43,10 +62,8 @@ class RegisterForm(forms.ModelForm):
         return name
 
     def clean_pwd(self):
-        pwd = self.cleaned_data.get('pwd')
-        if not re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w!@#$%^&*()_+\-=\[\]{}|;:\'",.<>/?]{8,20}$', pwd):
-            raise ValidationError("密码需8-20位且包含大小写字母和数字")
-        return pwd
+        return validate_password_strength(self.cleaned_data.get('pwd'))
+
 
     def clean_pwd_confirm(self):
         pwd = self.cleaned_data.get('pwd')
@@ -62,10 +79,13 @@ class RegisterForm(forms.ModelForm):
         return phone
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$', email):
+        email = (self.cleaned_data.get('email') or '').strip()
+        if not re.match(EMAIL_REGEX, email):
             raise ValidationError("请填写正确的邮箱格式")
+        if UserInfo.objects.filter(email__iexact=email).exists():
+            raise ValidationError("该邮箱已被其他账号使用，请更换或使用找回密码")
         return email
+
 
     # def clean_avatar(self):
     #     avatar = self.cleaned_data.get('avatar')
@@ -77,10 +97,23 @@ class RegisterForm(forms.ModelForm):
     #     return avatar
 
 class ModifyInfoForm(forms.ModelForm):
-    """处理用户信息修改的表单"""
+    """处理用户信息修改的表单。
+
+    传 user 是为了在改邮箱时排除自己（避免"邮箱已被占用"误判）。
+    """
+
     class Meta:
         model = UserInfo
         fields = ['name', 'email', 'phone']
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        # 原邮箱必须在 super().__init__() 之后、表单校验之前就记录下来。
+        # 原因：ModelForm._post_clean() 会把 cleaned_data 写回 self.instance，
+        # 等 is_valid() 之后再读 instance.email，拿到的已经是**新邮箱**了，
+        # 会导致"邮箱是否变更"永远判为 False，改邮箱的验证码校验被绕过。
+        self._original_email = (getattr(self.instance, 'email', '') or '').strip().lower()
 
     def clean_name(self):
         name = self.cleaned_data.get('name')
@@ -95,7 +128,71 @@ class ModifyInfoForm(forms.ModelForm):
         return phone
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2,})?$', email):
+        email = (self.cleaned_data.get('email') or '').strip()
+        if not re.match(EMAIL_REGEX, email):
             raise ValidationError("请填写正确的邮箱格式")
+        qs = UserInfo.objects.filter(email__iexact=email)
+        if self.user is not None:
+            qs = qs.exclude(uid=self.user.uid)
+        if qs.exists():
+            raise ValidationError("该邮箱已被其他账号使用，请更换")
         return email
+
+    def email_changed(self):
+        """邮箱是否真的变了（决定要不要走邮箱验证码）"""
+        new = (self.cleaned_data.get('email') or '').strip().lower()
+        return self._original_email != new
+
+
+class ChangePasswordByOldForm(forms.Form):
+    """方式一：记得原密码"""
+
+    old_pwd = forms.CharField(label='原密码', widget=forms.PasswordInput)
+    new_pwd = forms.CharField(
+        label='新密码',
+        widget=forms.PasswordInput,
+        min_length=8,
+        max_length=20,
+    )
+    new_pwd_confirm = forms.CharField(label='确认新密码', widget=forms.PasswordInput)
+
+    def clean_new_pwd(self):
+        return validate_password_strength(self.cleaned_data.get('new_pwd'))
+
+    def clean(self):
+        data = super().clean()
+        new_pwd = data.get('new_pwd')
+        confirm = data.get('new_pwd_confirm')
+        old_pwd = data.get('old_pwd')
+
+        if new_pwd and confirm and new_pwd != confirm:
+            raise ValidationError('两次输入的新密码不一致')
+        if new_pwd and old_pwd and new_pwd == old_pwd:
+            raise ValidationError('新密码不能与原密码相同')
+        return data
+
+
+class ChangePasswordByEmailForm(forms.Form):
+    """方式二：不记得原密码，用邮箱验证码。
+
+    邮箱验证码的 ticket 由视图层单独校验，这里只管新密码。
+    """
+
+    new_pwd = forms.CharField(
+        label='新密码',
+        widget=forms.PasswordInput,
+        min_length=8,
+        max_length=20,
+    )
+    new_pwd_confirm = forms.CharField(label='确认新密码', widget=forms.PasswordInput)
+
+    def clean_new_pwd(self):
+        return validate_password_strength(self.cleaned_data.get('new_pwd'))
+
+    def clean(self):
+        data = super().clean()
+        new_pwd = data.get('new_pwd')
+        confirm = data.get('new_pwd_confirm')
+        if new_pwd and confirm and new_pwd != confirm:
+            raise ValidationError('两次输入的新密码不一致')
+        return data

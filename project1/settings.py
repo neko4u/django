@@ -75,7 +75,10 @@ INSTALLED_APPS = [
     'apps.llm_config',
     'apps.pointsBalanceSystem',
     'apps.fault_tree',
+    'apps.captcha',
+    'apps.mailservice',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -269,3 +272,83 @@ JWT_CONFIG = {
     'ACCESS_TOKEN_EXPIRE_MINUTES': 60 * 24 *3, #3天!
 }
 TOKEN_SECRET_KEY = config.get('token_secret_key')
+
+
+
+
+# =====================================================================
+# 滑块验证码 apps/captcha
+# =====================================================================
+_captcha_conf = config.get('captcha', {})
+
+CAPTCHA = {
+    # 背景图池目录（服务端读取，浏览器不会请求；部署时把图片放进去即可）
+    'BG_DIR': _captcha_conf.get(
+        'bg_dir',
+        os.path.join(BASE_DIR, 'apps', 'captcha', 'assets', 'captcha_bg'),
+    ),
+    # 统一画布尺寸：固定尺寸是必须的，前端滑块轨道像素要和缺口 x 一一对应
+    'WIDTH': _captcha_conf.get('width', 320),
+    'HEIGHT': _captcha_conf.get('height', 160),
+    # 拼图块边长
+    'TILE_SIZE': _captcha_conf.get('tile_size', 48),
+    # 缺口 x 随机范围（按画布宽度比例，换画布尺寸不用改）
+    'X_RATIO_MIN': _captcha_conf.get('x_ratio_min', 0.35),
+    'X_RATIO_MAX': _captcha_conf.get('x_ratio_max', 0.75),
+    # 容差（像素）
+    'TOLERANCE': _captcha_conf.get('tolerance', 5),
+    # 挑战有效期（秒）
+    'EXPIRE_SECONDS': _captcha_conf.get('expire_seconds', 120),
+    # 通过滑块后签发的 ticket 有效期（秒），留给用户填表的时间
+    'TICKET_EXPIRE_SECONDS': _captcha_conf.get('ticket_expire_seconds', 600),
+    'MAX_TRACK_POINTS': _captcha_conf.get('max_track_points', 300),
+}
+
+
+# =====================================================================
+# 邮件服务 apps/mailservice
+# =====================================================================
+_mail_conf = config.get('mail', {})
+
+MAIL = {
+    # 'tencent' = 腾讯云邮件推送 API（现在用这个）
+    # 'resend'  = 自有域名 + Resend SMTP（以后换域名时改成这个即可，业务代码不用动）
+    'PROVIDER': _mail_conf.get('provider', 'tencent'),
+    'FROM_NAME': _mail_conf.get('from_name', 'Soriel'),
+
+    # 方案 A：腾讯云邮件推送（个人实名认证不支持 SMTP，只能用 API）
+    'TENCENT': {
+        'secret_id': _mail_conf.get('tencent_secret_id', ''),
+        'secret_key': _mail_conf.get('tencent_secret_key', ''),
+        'region': _mail_conf.get('tencent_region', 'ap-guangzhou'),
+        'from_email': _mail_conf.get('tencent_from_email', ''),
+        'sender_name': _mail_conf.get('tencent_sender_name', 'Soriel'),
+        # 模板方式（推荐，控制台建好模板填 ID 即可）；留空则走自定义 HTML 正文
+        'template_id': _mail_conf.get('tencent_template_id', ''),
+        'template_code_key': _mail_conf.get('tencent_template_code_key', 'code'),
+        'template_minutes_key': _mail_conf.get('tencent_template_minutes_key', 'minutes'),
+    },
+
+    # 方案 B：Resend + Cloudflare
+    'RESEND': {
+        'smtp_host': _mail_conf.get('resend_smtp_host', 'smtp.resend.com'),
+        'smtp_port': _mail_conf.get('resend_smtp_port', 587),
+        'smtp_username': _mail_conf.get('resend_smtp_username', 'resend'),
+        'smtp_password': _mail_conf.get('resend_smtp_password', ''),
+        'from_email': _mail_conf.get('resend_from_email', ''),
+        'from_name': _mail_conf.get('resend_from_name', 'Soriel'),
+        'use_tls': _mail_conf.get('resend_use_tls', True),
+    },
+
+    # 额度控制：腾讯云 1000 封是一次性的，用完不会自动停，所以这里必须自己计数
+    'DAILY_LIMIT': _mail_conf.get('daily_limit', 1000),
+    'TOTAL_LIMIT': _mail_conf.get('total_limit', 1000),
+
+    # 验证码安全参数
+    'CODE_LENGTH': _mail_conf.get('code_length', 6),
+    'CODE_EXPIRE_SECONDS': _mail_conf.get('code_expire_seconds', 600),
+    'RESEND_INTERVAL': _mail_conf.get('resend_interval', 60),
+    'MAX_PER_EMAIL_10MIN': _mail_conf.get('max_per_email_10min', 5),
+    'MAX_PER_IP_HOUR': _mail_conf.get('max_per_ip_hour', 20),
+    'TICKET_EXPIRE_SECONDS': _mail_conf.get('ticket_expire_seconds', 600),
+}
