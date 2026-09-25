@@ -223,11 +223,25 @@ class PointsExchangeService:
             }
         )
 
+        # 方案 B：连接中充值要「续命」—— 若当前有 active 会话，立刻顺延它的到期时间。
+        # 说明：
+        #   - 只推 FrpSessionRecord.stop_time，不产生时长增减 → 不写 TimeChangeRecord（避免重复记账）
+        #   - 失败只记日志，绝不影响兑换本身（兑换的积分/余额/流水此时已写好）
+        #   - 用函数内延迟导入，避免模块级循环依赖
+        extended = False
+        try:
+            from apps.frpServer import services as frp_services
+            extended = frp_services.extend_active_session(
+                self.user, self.total_seconds)
+        except Exception as e:
+            logger.error(f'用户 {self.user.uid} 兑换后顺延会话失败: {e}')
+
         logger.info(
             f'用户 {self.user.uid} '
             f'成功兑换 '
             f'{self.total_seconds} 秒FRP时长，'
-            f'消耗 {self.total_points} 积分'
+            f'消耗 {self.total_points} 积分，'
+            f'会话顺延={"是" if extended else "否(无进行中会话)"}'
         )
 
         return exchange_record

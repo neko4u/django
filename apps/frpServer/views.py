@@ -2,17 +2,22 @@ import json
 import time
 import hashlib
 import logging
+from datetime import datetime, timedelta, time as dt_time
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.conf import settings
+from django.core.paginator import Paginator
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .decorators import frp_permission_required
 from apps.login.models import UserInfo, FrpPermission
+from apps.common.http import client_ip
 from . import utils
 from . import services as frp_services
-from .models import UserTimeBalance, FrpSessionRecord
+from .models import UserTimeBalance, FrpSessionRecord, FrpConnectionLog
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +137,10 @@ def api_frp_session_start(request):
     if not user:
         return _json_err('未登录或登录已过期', code=401, http=401)
     try:
-        data = frp_services.start_session(user)
+        data = frp_services.start_session(user, client_ip=client_ip(request))
     except ValueError as e:
         return _json_err(str(e))
+
     return _json_ok(
         session_id=data['session_id'],
         balance_seconds=data['balance_seconds'],
@@ -185,9 +191,10 @@ def api_frp_session_stop(request):
     if not session_id:
         return _json_err('缺少 session_id')
     try:
-        data = frp_services.stop_session(user, session_id)
+        data = frp_services.stop_session(user, session_id, client_ip=client_ip(request))
     except ValueError as e:
         return _json_err(str(e))
+
     return _json_ok(
         used_seconds=data['used_seconds'],
         balance_seconds=data['balance_seconds'],
@@ -276,5 +283,128 @@ def api_user_profile(request):
         uid=user.uid,
         name=user.name,
         avatar=avatar,                 # 相对路径, 形如 /media/avatars/10001.png
+    )
+
+
+
+
+# ---------------------------------------------------------------------------
+# 历史连接：连接事件流水查询
+#   GET /api/frp_connection_log/
+#     ?preset=today|yesterday|last3|last7   可选，缺省 last7
+#     ?start=YYYY-MM-DD&end=YYYY-MM-DD      可选，给了就以它为准（优先于 preset）
+#     ?page=1&page_size=20                  page_size 只接受 20/50/100
+# ---------------------------------------------------------------------------
+
+CONNECTION_LOG_PAGE_SIZES = (20, 50, 100)
+CONNECTION_LOG_MAX_DAYS = 366
+
+
+def _parse_ymd(value):
+    """'YYYY-MM-DD' -> date；失败返回 None"""
+    try:
+        return datetime.strptime((value or '').strip(), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _resolve_log_range(request):
+    """解析查询区间，返回 (start_date, end_date, error_msg)
+
+    优先级：显式 start/end  >  preset  >  默认近 7 天
+    服务器 TIME_ZONE = Asia/Shanghai 且 USE_TZ = False，所以这里的本地日期即中国日期。
+    """
+    today = timezone.now().date()
+
+    raw_start = (request.GET.get('start') or '').strip()
+    raw_end = (request.GET.get('end') or '').strip()
+
+    if raw_start or raw_end:
+        start = _parse_ymd(raw_start)
+        end = _parse_ymd(raw_end)
+        if not start or not end:
+            return None, None, '日期格式不正确，应为 YYYY-MM-DD'
+        if start > end:
+            start, end = end, start
+        if (end - start).days + 1 > CONNECTION_LOG_MAX_DAYS:
+            return None, None, f'查询区间不能超过 {CONNECTION_LOG_MAX_DAYS} 天'
+        return start, end, None
+
+    preset = (request.GET.get('preset') or 'last7').strip().lower()
+    if preset == 'today':
+        return today, today, None
+    if preset == 'yesterday':
+        d = today - timedelta(days=1)
+        return d, d, None
+    if preset == 'last3':
+        return today - timedelta(days=2), today, None
+    # 默认 / last7
+    return today - timedelta(days=6), today, None
+
+
+def api_frp_connection_logs(request):
+    """历史连接列表（只返回当前用户自己的记录）"""
+    if request.method != 'GET':
+        return _json_err('非法请求', http=405)
+
+    user = _session_user(request)
+    if not user:
+        return _json_err('未登录或登录已过期', code=401, http=401)
+
+    start_date, end_date, err = _resolve_log_range(request)
+    if err:
+        return _json_err(err)
+
+    # ---- 分页参数（白名单，防 page_size=99999 拖库）----
+    try:
+        page = int(request.GET.get('page') or 1)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, page)
+
+    try:
+        page_size = int(request.GET.get('page_size') or CONNECTION_LOG_PAGE_SIZES[0])
+    except (TypeError, ValueError):
+        page_size = CONNECTION_LOG_PAGE_SIZES[0]
+    if page_size not in CONNECTION_LOG_PAGE_SIZES:
+        page_size = CONNECTION_LOG_PAGE_SIZES[0]
+
+    # ---- 区间用 datetime 边界（而不是 __date），才能吃到 (user, event_ts) 索引 ----
+    start_dt = datetime.combine(start_date, dt_time.min)
+    end_dt = datetime.combine(end_date, dt_time.max)
+
+    qs = (FrpConnectionLog.objects
+          .filter(user=user, event_ts__gte=start_dt, event_ts__lte=end_dt)
+          .order_by('-event_ts'))
+
+    paginator = Paginator(qs, page_size)
+    page_obj = paginator.get_page(page)      # 页码非法/越界会自动纠正
+
+    items = []
+    for row in page_obj.object_list:
+        items.append({
+            'session_id': row.session_id,
+            'type': row.event_type,                        # CONNECT / REUSE / DISCONNECT
+            'type_text': row.get_event_type_display(),     # 连接 / 重新连接 / 断开
+            'ts': row.event_ts.strftime('%Y-%m-%d %H:%M:%S'),
+            'ts_ts': _ts(row.event_ts),
+            'ip': row.client_ip or '',                     # 无请求来源的事件为空
+            'reason': row.reason,
+            'reason_text': row.get_reason_display(),       # 备注
+            'duration_seconds': row.duration_seconds,      # 仅断开事件有值
+        })
+
+    return _json_ok(
+        items=items,
+        total=paginator.count,
+        page=page_obj.number,
+        page_size=page_size,
+        pages=paginator.num_pages,
+        has_next=page_obj.has_next(),
+        has_prev=page_obj.has_previous(),
+        range={
+            'start': start_date.strftime('%Y-%m-%d'),
+            'end': end_date.strftime('%Y-%m-%d'),
+        },
     )
 

@@ -84,6 +84,8 @@ urlpatterns = [
     path('api/frp_port/release/', frpServer_views.api_frp_port_release, name='frp_port_release'),
     path('api/frp_port/', frpServer_views.api_frp_port_current, name='frp_port_current'),
     path('api/user_profile/', frpServer_views.api_user_profile, name='user_profile'),
+    # 历史连接（连接事件流水）
+    path('api/frp_connection_log/', frpServer_views.api_frp_connection_logs, name='frp_connection_log'),
     #pointsBalanceSystem
     path('points/', include('apps.pointsBalanceSystem.urls', namespace='points')),# 滑块验证码接口 /api/slider-captcha/  /api/verify-slider/
     path('api/', include('apps.captcha.urls')),# 邮箱验证码接口 /api/send-email-code/  /api/verify-email-code/
