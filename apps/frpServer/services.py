@@ -1,6 +1,8 @@
 from apps.login.models import FrpPermission
 from apps.login.services import JwtService
 
+import json
+import logging
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -10,8 +12,11 @@ from django.db import transaction, models
 from django.db.utils import DatabaseError
 from django.utils import timezone
 
-from .models import UserTimeBalance, TimeChangeRecord, FrpSessionRecord
+from .models import UserTimeBalance, TimeChangeRecord, FrpSessionRecord, FrpConnectionLog
 import requests
+
+logger = logging.getLogger(__name__)
+
 
 def authenticate_user(request):
     """
@@ -76,6 +81,35 @@ HEARTBEAT_INTERVAL = 30      # 客户端心跳周期（秒），仅供参考/校
 REDIS_SESSION_EXPIRE = 86400  # redis 会话 key 兜底 TTL（24h），孤儿 key 由巡检清理
 
 
+# 会话结束原因 -> 连接事件流水的「备注」
+_DISCONNECT_REASON_MAP = {
+    FrpSessionRecord.EndReason.MANUAL: FrpConnectionLog.Reason.MANUAL,
+    FrpSessionRecord.EndReason.BALANCE_EXHAUSTED: FrpConnectionLog.Reason.BALANCE_EXHAUSTED,
+    FrpSessionRecord.EndReason.TIMEOUT_PATROL: FrpConnectionLog.Reason.TIMEOUT_PATROL,
+    FrpSessionRecord.EndReason.FORCED: FrpConnectionLog.Reason.FORCED,
+}
+
+
+def _log_connection_event(user, session_id, event_type, event_ts, reason,
+                          client_ip=None, duration_seconds=0, detail=None):
+    try:
+        FrpConnectionLog.objects.create(
+            user=user,
+            session_id=session_id or '',
+            event_type=event_type,
+            event_ts=event_ts,
+            client_ip=(client_ip or None),
+            reason=reason,
+            duration_seconds=duration_seconds or 0,
+            detail_json=json.dumps(detail or {}, ensure_ascii=False),
+        )
+    except Exception as exc:
+        logger.error(
+            f'写连接事件流水失败 uid={getattr(user, "uid", None)} '
+            f'session={session_id} type={event_type}: {exc}'
+        )
+
+
 def _redis():
     return cache.client.get_client()
 
@@ -134,6 +168,54 @@ def _clear_redis_session(uid):
 
 
 # 加时长
+def extend_active_session(user, seconds):
+    """把当前 active 会话的到期时间顺延 N 秒（连接中充值/加时长时调用）。
+
+    设计要点：
+      - 用 F() 表达式做原子自增，避免「读-改-写」在并发下丢更新；
+      - 只取最新的一条 active 会话（按 start_ts 倒序）；
+      - 同步 Redis 的 stop_time（心跳会用 DB 值重写 redis，这里同步只为让
+        下一次心跳到来前显示也一致）；
+      - 返回 True/False：没有 active 会话时返回 False（只加余额，不需要续命）。
+
+    ⚠️ 顺延只延长「当前会话」，不产生任何时长增减 ——
+       余额在充值/兑换时已经加过了，所以这里**不写 TimeChangeRecord**，避免重复记账。
+    """
+    if seconds <= 0:
+        return False
+
+    session = (
+        FrpSessionRecord.objects
+        .filter(user=user, status='active')
+        .order_by('-start_ts')
+        .first()
+    )
+    if not session:
+        return False
+
+    FrpSessionRecord.objects.filter(
+        session_id=session.session_id, status='active'
+    ).update(stop_time=models.F('stop_time') + timedelta(seconds=seconds))
+
+    session.refresh_from_db(fields=['stop_time'])
+
+    try:
+        r = _redis()
+        key = _session_key(user.uid)
+        if r.exists(key):
+            r.hset(key, 'stop_time', _to_ts(session.stop_time))
+            r.expire(key, REDIS_SESSION_EXPIRE)
+    except Exception as exc:
+        logger.error(f'顺延会话时同步 Redis 失败 uid={user.uid}: {exc}')
+
+    logger.info(
+        f'用户 {user.uid} 会话顺延 {seconds}s，'
+        f'新到期时间 {session.stop_time}，session={session.session_id}'
+    )
+    return True
+
+
+
 
 def add_time(user, seconds, scene, detail_json=None, *, extend_session=True):
 
@@ -167,23 +249,15 @@ def add_time(user, seconds, scene, detail_json=None, *, extend_session=True):
         )
 
         if extend_session:
-            session = FrpSessionRecord.objects.filter(
-                user=user, status='active').first()
-            if session:
-                session.stop_time = session.stop_time + timedelta(seconds=seconds)
-                session.save(update_fields=['stop_time'])
-                r = _redis()
-                key = _session_key(user.uid)
-                if r.exists(key):
-                    r.hset(key, 'stop_time', _to_ts(session.stop_time))
-                    r.expire(key, REDIS_SESSION_EXPIRE)
+            extend_active_session(user, seconds)
+
 
     return tb.balance_seconds
 
 
 # 会话开始
 
-def start_session(user, now=None):
+def start_session(user, now=None, client_ip=None):
     now = now or _now()
 
     existing = FrpSessionRecord.objects.filter(
@@ -195,12 +269,28 @@ def start_session(user, now=None):
         UserTimeBalance.objects.filter(user=user).update(
             is_online=True, current_session_id=existing.session_id)
         tb, _ = UserTimeBalance.objects.get_or_create(user=user)
+
+        _log_connection_event(
+            user=user,
+            session_id=existing.session_id,
+            event_type=FrpConnectionLog.EventType.REUSE,
+            event_ts=now,
+            reason=FrpConnectionLog.Reason.SESSION_REUSE,
+            client_ip=client_ip,
+            detail={
+                'session_start_ts': _to_ts(existing.start_ts),
+                'session_stop_time': _to_ts(existing.stop_time),
+                'balance_seconds': tb.balance_seconds,
+            },
+        )
+
         return {
             'session_id': existing.session_id,
             'balance_seconds': tb.balance_seconds,
             'stop_time': existing.stop_time,
             'reused': True,
         }
+
 
     with transaction.atomic():
         tb, _ = UserTimeBalance.objects.select_for_update().get_or_create(
@@ -223,6 +313,23 @@ def start_session(user, now=None):
         )
         UserTimeBalance.objects.filter(user=user).update(
             is_online=True, current_session_id=session_id)
+
+        # 事件流水：新建会话（主动连接）
+        # 放在 atomic 内，事务回滚时本事件一并回滚，保证与主记录一致
+        _log_connection_event(
+            user=user,
+            session_id=session_id,
+            event_type=FrpConnectionLog.EventType.CONNECT,
+            event_ts=start_ts,
+            reason=FrpConnectionLog.Reason.ACTIVE_CONNECT,
+            client_ip=client_ip,
+            detail={
+                'start_ts': _to_ts(start_ts),
+                'stop_time': _to_ts(stop_time),
+                'balance_seconds': tb.balance_seconds,
+            },
+        )
+
 
     _write_redis_session(user.uid, session_id, start_ts, stop_time, now)
 
@@ -279,7 +386,7 @@ def heartbeat(user, session_id, now=None):
 
 # 会话结算
 
-def settle_session(session, end_reason, end_ts=None):
+def settle_session(session, end_reason, end_ts=None, client_ip=None):
     end_ts = end_ts or _now()
     used = max(0, int((end_ts - session.start_ts).total_seconds()))
     refund = max(0, int((session.stop_time - end_ts).total_seconds())) \
@@ -327,16 +434,33 @@ def settle_session(session, end_reason, end_ts=None):
             is_online=False, current_session_id='')
 
     _clear_redis_session(user.uid)
+
+    # 事件流水：断开。
+    # 只有「主动断开」（有用户请求）才记 IP；时长耗尽/心跳超时是系统侧触发，没有请求 → 留空。
+    # 位置在 updated == 0 的幂等 return 之后，天然不会重复写。
+    _log_connection_event(
+        user=user,
+        session_id=session.session_id,
+        event_type=FrpConnectionLog.EventType.DISCONNECT,
+        event_ts=end_ts,
+        reason=_DISCONNECT_REASON_MAP.get(end_reason, FrpConnectionLog.Reason.OTHER),
+        client_ip=client_ip if end_reason == FrpSessionRecord.EndReason.MANUAL else None,
+        duration_seconds=used,
+        detail={'refund_seconds': refund},
+    )
+
     return used
 
 
-def stop_session(user, session_id):
+
+def stop_session(user, session_id, client_ip=None):
     session = FrpSessionRecord.objects.filter(
         user=user, status='active', session_id=session_id).first()
     if not session:
         raise ValueError('会话不存在或已结束')
     now = _now()
-    used = settle_session(session, FrpSessionRecord.EndReason.MANUAL, now)
+    used = settle_session(session, FrpSessionRecord.EndReason.MANUAL, now,
+                          client_ip=client_ip)
     tb, _ = UserTimeBalance.objects.get_or_create(user=user)
     return {'used_seconds': used or 0, 'balance_seconds': tb.balance_seconds}
 
