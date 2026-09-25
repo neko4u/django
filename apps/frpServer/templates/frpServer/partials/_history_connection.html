@@ -10,15 +10,41 @@
         <div class="hc-presets" id="hc-presets"></div>
 
         <div class="hc-daterange">
-            <input type="date" id="hc-start" class="hc-date">
-            <span class="hc-tilde">~</span>
-            <input type="date" id="hc-end" class="hc-date">
+            <!-- 单个方框：点击展开日历，在日历里点两次确定区间 -->
+            <div class="hc-dp" id="hc-dp">
+                <button type="button" class="hc-dp-trigger" id="hc-dp-trigger"
+                        aria-haspopup="dialog" aria-expanded="false">
+                    <span class="hc-dp-text is-placeholder" id="hc-dp-text">选择日期区间</span>
+                    <span class="hc-dp-caret" aria-hidden="true"></span>
+                </button>
+
+                <div class="hc-dp-panel" id="hc-dp-panel">
+                    <div class="hc-dp-head">
+                        <button type="button" class="hc-dp-nav" data-nav="-12" aria-label="上一年">&laquo;</button>
+                        <button type="button" class="hc-dp-nav" data-nav="-1" aria-label="上个月">&lsaquo;</button>
+                        <span class="hc-dp-month" id="hc-dp-month"></span>
+                        <button type="button" class="hc-dp-nav" data-nav="1" aria-label="下个月">&rsaquo;</button>
+                        <button type="button" class="hc-dp-nav" data-nav="12" aria-label="下一年">&raquo;</button>
+                    </div>
+
+                    <div class="hc-dp-week">
+                        <span>日</span><span>一</span><span>二</span><span>三</span>
+                        <span>四</span><span>五</span><span>六</span>
+                    </div>
+
+                    <div class="hc-dp-grid" id="hc-dp-grid"></div>
+
+                    <div class="hc-dp-foot">
+                        <span class="hc-dp-hint" id="hc-dp-hint">请点击选择开始日期</span>
+                    </div>
+                </div>
+            </div>
+
             <button type="button" id="hc-query" class="hc-btn hc-btn-primary">查询</button>
             <button type="button" id="hc-reset" class="hc-btn">重置</button>
         </div>
 
         <div class="hc-toolbar-right">
-            <span class="hc-range-text" id="hc-range-text"></span>
             <button type="button" id="hc-refresh" class="hc-btn" title="按当前条件重新查询">刷新</button>
         </div>
     </div>
