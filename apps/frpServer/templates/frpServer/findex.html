@@ -4,6 +4,8 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'login/css/index.css' %}">
 <link rel="stylesheet" href="{% static 'pointsBalanceSystem/css/exchange_detail.css' %}">
+<link rel="stylesheet" href="{% static 'frpServer/css/history_connection.css' %}">
+
 
 <script>
     document.querySelectorAll('.left-nav-item a').forEach(link => {
@@ -47,6 +49,16 @@
         text-align: left;
         padding-bottom: 24px;
     }
+    #sec4-content {
+        height: auto;
+        min-height: calc(100vh - 70px);
+        justify-content: flex-start;
+        align-items: stretch;
+        text-align: left;
+        padding-bottom: 24px;
+        overflow-y: auto;
+    }
+
 </style>
 <div id="sec1-content" class="tab-content">
     <h1 style="font-size: 50px;"><span style="font-size: 48;">个人主页</span></a></h1>
@@ -83,8 +95,8 @@
 
 
 <div id="sec4-content" class="tab-content">
-    <h1>历史连接</h1>
+    {% include "frpServer/partials/_history_connection.html" %}
 </div>
 
-
+<script src="{% static 'frpServer/js/history_connection.js' %}"></script>
 {% endblock %}

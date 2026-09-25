@@ -1,0 +1,217 @@
+/* apps/frpServer/static/frpServer/css/history_connection.css
+   历史连接（连接事件流水）样式。
+   ⚠️ 所有规则都限定在 #history-conn 作用域内 —— 不写全局 body / 通用标签规则，
+      避免像之前那样污染其它页面。
+*/
+
+#history-conn {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 20px 0;
+    box-sizing: border-box;
+    color: #1a1a2e;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+#history-conn .hc-head { margin-bottom: 14px; }
+#history-conn .hc-title { margin: 0; font-size: 22px; font-weight: 600; }
+#history-conn .hc-sub { margin: 4px 0 0; font-size: 13px; color: #8a97a8; }
+
+/* ---------------- 工具栏 ---------------- */
+#history-conn .hc-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 12px 14px;
+    background: #f7f9fc;
+    border: 1px solid #e5e9f0;
+    border-radius: 10px;
+    margin-bottom: 14px;
+}
+
+#history-conn .hc-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+
+#history-conn .hc-chip {
+    padding: 5px 14px;
+    border: 1px solid #d8e0ea;
+    background: #fff;
+    border-radius: 999px;
+    color: #5f6b7a;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color .15s, color .15s, background .15s;
+}
+#history-conn .hc-chip:hover { border-color: #2b7de9; color: #2b7de9; }
+#history-conn .hc-chip.is-active {
+    background: #2b7de9;
+    border-color: #2b7de9;
+    color: #fff;
+}
+
+#history-conn .hc-daterange { display: flex; align-items: center; gap: 8px; }
+
+#history-conn .hc-date {
+    padding: 5px 8px;
+    border: 1px solid #d8e0ea;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1a1a2e;
+    background: #fff;
+}
+
+#history-conn .hc-tilde { color: #8a97a8; }
+
+#history-conn .hc-btn {
+    padding: 6px 14px;
+    border: 1px solid #d8e0ea;
+    background: #fff;
+    border-radius: 6px;
+    color: #5f6b7a;
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color .15s, color .15s, background .15s;
+}
+#history-conn .hc-btn:hover { border-color: #2b7de9; color: #2b7de9; }
+#history-conn .hc-btn-primary {
+    background: #2b7de9; border-color: #2b7de9; color: #fff;
+}
+#history-conn .hc-btn-primary:hover { background: #1f6bd0; border-color: #1f6bd0; color: #fff; }
+#history-conn .hc-btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+#history-conn .hc-toolbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#history-conn .hc-range-text { font-size: 12px; color: #8a97a8; }
+
+/* ---------------- 表格 ---------------- */
+#history-conn .hc-tablewrap {
+    position: relative;
+    border: 1px solid #e5e9f0;
+    border-radius: 10px;
+    overflow-x: auto;          /* 移动端横向滚动 */
+    background: #fff;
+    min-height: 240px;
+}
+
+#history-conn .hc-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+#history-conn .hc-table th,
+#history-conn .hc-table td {
+    padding: 11px 14px;
+    text-align: left;
+    border-bottom: 1px solid #eef2f7;
+    white-space: nowrap;
+}
+
+#history-conn .hc-table th {
+    background: #fafbfd;
+    color: #5f6b7a;
+    font-weight: 500;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#history-conn .hc-table tbody tr:last-child td { border-bottom: none; }
+#history-conn .hc-table tbody tr:hover { background: #fafcff; }
+
+#history-conn .hc-col-type { width: 120px; }
+#history-conn .hc-col-time { width: 180px; }
+#history-conn .hc-col-ip   { width: 160px; }
+#history-conn .hc-col-dur  { width: 140px; }
+
+#history-conn .hc-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 1.7;
+}
+#history-conn .hc-badge--connect    { background: #e8f1fe; color: #2b7de9; }
+#history-conn .hc-badge--reuse      { background: #fff3e0; color: #d97706; }
+#history-conn .hc-badge--disconnect { background: #eef1f5; color: #5f6b7a; }
+
+#history-conn .hc-ip { font-family: Consolas, Monaco, monospace; font-size: 13px; }
+#history-conn .hc-muted { color: #b6c0cd; }
+
+/* ---------------- 状态层：加载中 / 空 / 错误 ---------------- */
+#history-conn .hc-state {
+    display: none;
+    padding: 48px 20px;
+    text-align: center;
+    color: #8a97a8;
+    font-size: 14px;
+}
+#history-conn .hc-state.is-show { display: block; }
+#history-conn .hc-state.is-error { color: #d9534f; }
+
+/* 骨架屏 */
+#history-conn .hc-skeleton { padding: 18px 14px; }
+#history-conn .hc-skeleton-row {
+    height: 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    background: linear-gradient(90deg, #f0f3f8 25%, #e6ebf3 37%, #f0f3f8 63%);
+    background-size: 400% 100%;
+    animation: hc-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes hc-shimmer {
+    0%   { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+/* ---------------- 底部：总数 / 分页 / 每页条数 ---------------- */
+#history-conn .hc-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 2px 4px;
+}
+#history-conn .hc-total { font-size: 13px; color: #8a97a8; }
+
+#history-conn .hc-pager { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+#history-conn .hc-page-btn {
+    min-width: 34px;
+    padding: 5px 10px;
+    border: 1px solid #d8e0ea;
+    background: #fff;
+    border-radius: 6px;
+    color: #5f6b7a;
+    cursor: pointer;
+    font-size: 13px;
+}
+#history-conn .hc-page-btn:hover:not([disabled]) { border-color: #2b7de9; color: #2b7de9; }
+#history-conn .hc-page-btn.is-active {
+    background: #2b7de9; border-color: #2b7de9; color: #fff;
+}
+#history-conn .hc-page-btn[disabled] { opacity: .45; cursor: not-allowed; }
+#history-conn .hc-page-gap { padding: 5px 2px; color: #b6c0cd; }
+
+#history-conn .hc-pagesize { font-size: 13px; color: #5f6b7a; }
+#history-conn .hc-pagesize select {
+    padding: 4px 6px;
+    border: 1px solid #d8e0ea;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    color: #1a1a2e;
+}
+
+/* ---------------- 移动端 ---------------- */
+@media (max-width: 640px) {
+    #history-conn { padding: 16px 12px 0; }
+    #history-conn .hc-toolbar-right { margin-left: 0; }
+    #history-conn .hc-pager { margin-left: 0; }
+}

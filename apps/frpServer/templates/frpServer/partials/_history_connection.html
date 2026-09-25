@@ -1,0 +1,56 @@
+{% load static %}
+<div id="history-conn" data-api="{% url 'frp_connection_log' %}">
+
+    <div class="hc-head">
+        <h2 class="hc-title">历史连接</h2>
+        <p class="hc-sub">只展示你自己账号的连接记录，默认查询近 7 天。</p>
+    </div>
+
+    <div class="hc-toolbar">
+        <div class="hc-presets" id="hc-presets"></div>
+
+        <div class="hc-daterange">
+            <input type="date" id="hc-start" class="hc-date">
+            <span class="hc-tilde">~</span>
+            <input type="date" id="hc-end" class="hc-date">
+            <button type="button" id="hc-query" class="hc-btn hc-btn-primary">查询</button>
+            <button type="button" id="hc-reset" class="hc-btn">重置</button>
+        </div>
+
+        <div class="hc-toolbar-right">
+            <span class="hc-range-text" id="hc-range-text"></span>
+            <button type="button" id="hc-refresh" class="hc-btn" title="按当前条件重新查询">刷新</button>
+        </div>
+    </div>
+
+    <div class="hc-tablewrap">
+        <table class="hc-table">
+            <thead>
+                <tr>
+                    <th class="hc-col-type">类型</th>
+                    <th class="hc-col-time">时间</th>
+                    <th class="hc-col-ip">操作IP</th>
+                    <th class="hc-col-reason">备注</th>
+                    <th class="hc-col-dur">时长</th>
+                </tr>
+            </thead>
+            <tbody id="hc-tbody"></tbody>
+        </table>
+
+        <div class="hc-state" id="hc-state"></div>
+    </div>
+
+    <div class="hc-foot">
+        <div class="hc-total" id="hc-total"></div>
+        <div class="hc-pager" id="hc-pager"></div>
+        <div class="hc-pagesize">
+            每页
+            <select id="hc-page-size">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            条
+        </div>
+    </div>
+</div>
