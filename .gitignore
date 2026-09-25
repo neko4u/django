@@ -1,5 +1,5 @@
 venv38/
-venv/
+/venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -8,11 +8,11 @@ Thumbs.db
 *.log
 local_settings.py
 .env
-staticfiles/
-media/
+/staticfiles/
+/media/
 *.bak
 
-logs/
+/logs/
 apps/captcha/assets/captcha_bg/*
 !apps/captcha/assets/captcha_bg/.gitkeep
 /downloads/
