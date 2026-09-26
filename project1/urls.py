@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from apps.login import views as login_views
+from apps.suadmin import views as suadmin_views
 from apps.frpServer import views as frpServer_views
 from django.views.generic import RedirectView
 from django.urls import include
@@ -46,7 +47,7 @@ urlpatterns = [
     path('do_post_like/',login_views.do_post_like,name="do_post_like"),
     path('do_comment_like/',login_views.do_comment_like,name="do_comment_like"),
     # admin
-    path('suadmin/',login_views.admin_panel,name="admin_panel"),
+    path('suadmin/', suadmin_views.admin_home, name="admin_panel"),
     path('ad_create_comment/',login_views.ad_create_comment,name="ad_create_comment"),
     path('task-list-api/', login_views.task_list_api, name='task_list_api'),
     # frp

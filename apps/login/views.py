@@ -5,6 +5,8 @@ from django.contrib.messages import get_messages
 from .forms import LoginForm, RegisterForm, ModifyInfoForm
 from .services import AuthenticationService, AvatarService, ForumService, JwtService
 from .decorators import login_required_view, login_required_api
+from apps.suadmin.decorators import admin_required_api, require_perm_api
+from apps.suadmin.permissions import PERM_FORUM_COMMENT_CREATE
 from .models import UserInfo, Post
 from django.http import HttpResponse
 import logging
@@ -681,14 +683,7 @@ def do_comment_like(request):
             return JsonResponse({'status': 'error', 'message': '服务器内部错误'}, status=500)
     return JsonResponse({'status': 'error', 'message': '需要POST请求'}, status=405)
 
-@login_required_api
-def admin_panel(request):
-    if request.method == "POST":
-        return render(request, 'suadmin/adminIndex.html')
-    if request.method == "GET":
-        return render(request, 'suadmin/adminIndex.html')
-
-@login_required_api
+@require_perm_api(PERM_FORUM_COMMENT_CREATE)
 def ad_create_comment(request):
     if request.method == "POST":
         pid = request.POST.get("pid")
@@ -746,7 +741,7 @@ def ad_create_comment(request):
     # print("传输完成")
     # return JsonResponse({'status': 'success', 'message': '评论成功'})
 
-@login_required_api
+@admin_required_api
 def task_list_api(request):
     tasks = CommentGenerationTask.objects.all()[:50]  # 限制条数
     data = []

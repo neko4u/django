@@ -20,6 +20,3 @@ def login_required_api(view_func):
             return JsonResponse({'status': 'error', 'message': '用户未登录'}, status=401)
         return view_func(request, *args, **kwargs)
     return _wrapped_view
-
-def admin_login_required_api(view_func):
-    return 1
