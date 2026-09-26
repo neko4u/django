@@ -78,7 +78,9 @@ INSTALLED_APPS = [
     'apps.captcha',
     'apps.mailservice',
     'apps.downloads',
+    'apps.suadmin',
 ]
+
 
 
 
