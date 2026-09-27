@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑文档 #{{ doc.docid }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa; color: #1a1a2e;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        .topbar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 18px; background: #fff;
+            border-bottom: 1px solid #e5e9f0; flex: 0 0 auto;
+        }
+        .topbar .docid {
+            font-size: 13px; color: #5f6b7a; background: #f0f5fd;
+            padding: 4px 10px; border-radius: 6px; white-space: nowrap;
+        }
+        .topbar input[type=text] {
+            flex: 1; min-width: 160px; padding: 8px 12px; font-size: 14px;
+            border: 1px solid #d8e0ea; border-radius: 8px; font-family: inherit;
+        }
+        .topbar input[type=text]:focus { outline: none; border-color: #2b7de9; }
+        .topbar button {
+            padding: 8px 20px; font-size: 14px; border: 1px solid #2b7de9;
+            background: #2b7de9; color: #fff; border-radius: 8px; cursor: pointer;
+            font-family: inherit; white-space: nowrap;
+        }
+        .topbar button:hover { background: #1f6bd0; }
+        .topbar button:disabled { opacity: .55; cursor: not-allowed; }
+        #status { font-size: 13px; color: #8a97a8; white-space: nowrap; }
+        #status.ok { color: #1f9d55; }
+        #status.err { color: #c0392b; }
+
+        .editorwrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 14px 18px 0; }
+        #editor {
+            flex: 1 1 auto; width: 100%; min-height: 0; resize: none;
+            padding: 14px 16px; font-size: 13.5px; line-height: 1.75;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            border: 1px solid #e5e9f0; border-radius: 10px 10px 0 0;
+            border-bottom: none; background: #fff; color: #1a1a2e; tab-size: 4;
+        }
+        #editor:focus { outline: none; border-color: #2b7de9; }
+        .editorfoot {
+            display: flex; align-items: center; gap: 14px;
+            padding: 7px 14px; background: #fff; font-size: 12px; color: #8a97a8;
+            border: 1px solid #e5e9f0; border-radius: 0 0 10px 10px;
+        }
+        .editorfoot .spacer { margin-left: auto; }
+
+        /* ↓↓↓ 批④ 的图片区会插在这里 ↓↓↓ */
+        #image-panel { flex: 0 0 auto; padding: 14px 18px 18px; display: none; }
+        /* ↑↑↑ 批④ 的图片区会插在这里 ↑↑↑ */
+
+        .hint { font-size: 12px; color: #b6c0cd; }
+        kbd {
+            background: #eef2f7; border: 1px solid #dde4ec; border-radius: 4px;
+            padding: 1px 5px; font-size: 11px; font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="docid">docid: {{ doc.docid }}</span>
+    <input type="text" id="title" maxlength="200" placeholder="文档标题"
+           value="{{ doc.title }}">
+    <span id="status">未修改</span>
+    <button type="button" id="save-btn">保存（Ctrl+S）</button>
+</div>
+
+<div class="editorwrap">
+    <textarea id="editor" spellcheck="false"
+              placeholder="在这里粘贴 / 编写 HTML……">{{ doc.content_html }}</textarea>
+    <div class="editorfoot">
+        <span>HTML 长度：<b id="len-now">0</b> 字符</span>
+        <span>库中：<b id="len-saved">{{ doc.content_html|length }}</b> 字符</span>
+        <span class="spacer"></span>
+        <span class="hint">
+            <kbd>Tab</kbd> 缩进 · <kbd>Ctrl+S</kbd> 保存 ·
+            保存时会自动过滤危险标签并同步生成 Markdown
+        </span>
+    </div>
+</div>
+
+<!-- 批④ 会在这里加「图片上传 + 一键复制路径」 -->
+<div id="image-panel"></div>
+
+<script>
+(function () {
+    'use strict';
+
+    var SAVE_URL = '{% url "helpdoc_admin_save" %}';
+    var DOCID = '{{ doc.docid }}';
+
+    var editor = document.getElementById('editor');
+    var titleEl = document.getElementById('title');
+    var statusEl = document.getElementById('status');
+    var saveBtn = document.getElementById('save-btn');
+    var lenNow = document.getElementById('len-now');
+    var lenSaved = document.getElementById('len-saved');
+
+    var dirty = false;
+
+    function csrfToken() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (el) { return el.value; }
+        // 页面里没有表单的 csrf 输入时，从 cookie 取
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = cls || '';
+    }
+
+    function refreshLen() {
+        lenNow.textContent = editor.value.length;
+    }
+
+    function markDirty() {
+        if (!dirty) { dirty = true; setStatus('有未保存的修改'); }
+    }
+
+    editor.addEventListener('input', function () { refreshLen(); markDirty(); });
+    titleEl.addEventListener('input', markDirty);
+
+    // Tab 键插入 4 个空格（方便排 HTML 缩进），Esc 后再按 Tab 可正常跳焦点
+    editor.addEventListener('keydown', function (e) {
+        if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+            var s = editor.selectionStart, en = editor.selectionEnd;
+            editor.value = editor.value.slice(0, s) + '    ' + editor.value.slice(en);
+            editor.selectionStart = editor.selectionEnd = s + 4;
+            refreshLen(); markDirty();
+        }
+    });
+
+    function save() {
+        if (saveBtn.disabled) { return; }
+        saveBtn.disabled = true;
+        setStatus('保存中…');
+
+        var fd = new FormData();
+        fd.append('docid', DOCID);
+        fd.append('title', titleEl.value);
+        fd.append('content_html', editor.value);
+        fd.append('csrfmiddlewaretoken', csrfToken());
+
+        fetch(SAVE_URL, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (resp) {
+            return resp.text().then(function (t) {
+                var data = null;
+                try { data = JSON.parse(t); } catch (e) { data = null; }
+                return { status: resp.status, data: data };
+            });
+        })
+        .then(function (r) {
+            if (!r.data) {
+                setStatus('保存失败（HTTP ' + r.status + '），请稍后重试', 'err');
+                return;
+            }
+            if (r.data.status !== 'success') {
+                setStatus(r.data.message || '保存失败', 'err');
+                return;
+            }
+            dirty = false;
+            lenSaved.textContent = r.data.html_length;
+            setStatus('已保存 ' + r.data.updated_at, 'ok');
+        })
+        .catch(function () {
+            setStatus('网络错误，请检查网络后重试', 'err');
+        })
+        .then(function () {
+            saveBtn.disabled = false;
+        });
+    }
+
+    saveBtn.addEventListener('click', save);
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            save();
+        }
+    });
+
+    // 有未保存改动时离开页面给个拦截
+    window.addEventListener('beforeunload', function (e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    refreshLen();
+})();
+</script>
+
+{% csrf_token %}
+</body>
+</html>
