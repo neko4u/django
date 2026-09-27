@@ -54,6 +54,10 @@ urlpatterns = [
        # helpdoc
     path('suadmin/helpdoc/', helpdocs_admin_views.doc_index, name='helpdoc_admin_index'),
     path('suadmin/helpdoc/save/', helpdocs_admin_views.doc_save, name='helpdoc_admin_save'),
+    path('suadmin/helpdoc/image/upload/', helpdocs_admin_views.image_upload, name='helpdoc_admin_image_upload'),
+    path('suadmin/helpdoc/image/list/', helpdocs_admin_views.image_list, name='helpdoc_admin_image_list'),
+    path('suadmin/helpdoc/image/delete/', helpdocs_admin_views.image_delete, name='helpdoc_admin_image_delete'),
+
     path('suadmin/helpdoc/<int:docid>/', helpdocs_admin_views.doc_edit, name='helpdoc_admin_edit'),
 
     # frp

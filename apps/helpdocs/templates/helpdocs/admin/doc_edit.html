@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑文档 #{{ doc.docid }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa; color: #1a1a2e;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        .topbar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 18px; background: #fff;
+            border-bottom: 1px solid #e5e9f0; flex: 0 0 auto;
+        }
+        .topbar .docid {
+            font-size: 13px; color: #5f6b7a; background: #f0f5fd;
+            padding: 4px 10px; border-radius: 6px; white-space: nowrap;
+        }
+        .topbar input[type=text] {
+            flex: 1; min-width: 160px; padding: 8px 12px; font-size: 14px;
+            border: 1px solid #d8e0ea; border-radius: 8px; font-family: inherit;
+        }
+        .topbar input[type=text]:focus { outline: none; border-color: #2b7de9; }
+        .topbar button {
+            padding: 8px 20px; font-size: 14px; border: 1px solid #2b7de9;
+            background: #2b7de9; color: #fff; border-radius: 8px; cursor: pointer;
+            font-family: inherit; white-space: nowrap;
+        }
+        .topbar button:hover { background: #1f6bd0; }
+        .topbar button:disabled { opacity: .55; cursor: not-allowed; }
+        #status { font-size: 13px; color: #8a97a8; white-space: nowrap; }
+        #status.ok { color: #1f9d55; }
+        #status.err { color: #c0392b; }
+
+        .editorwrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: 14px 18px 0; }
+        #editor {
+            flex: 1 1 auto; width: 100%; min-height: 0; resize: none;
+            padding: 14px 16px; font-size: 13.5px; line-height: 1.75;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            border: 1px solid #e5e9f0; border-radius: 10px 10px 0 0;
+            border-bottom: none; background: #fff; color: #1a1a2e; tab-size: 4;
+        }
+        #editor:focus { outline: none; border-color: #2b7de9; }
+        .editorfoot {
+            display: flex; align-items: center; gap: 14px;
+            padding: 7px 14px; background: #fff; font-size: 12px; color: #8a97a8;
+            border: 1px solid #e5e9f0; border-radius: 0 0 10px 10px;
+        }
+        .editorfoot .spacer { margin-left: auto; }
+
+        /* ---------------- 图片区（批④） ---------------- */
+        #image-panel {
+            flex: 0 0 auto;
+            max-height: 40vh;
+            overflow: auto;
+            margin-top: 14px;
+            padding: 0 18px 18px;
+            border-top: 1px solid #e9eef5;
+        }
+
+        .ip-head {
+            display: flex; align-items: center; gap: 10px;
+            margin: 12px 0 8px;
+        }
+        .ip-head b { font-size: 13px; color: #3d4a5c; }
+        .ip-head .spacer { margin-left: auto; }
+        .ip-tip { font-size: 12px; color: #1f9d55; }
+        .ip-tip.err { color: #c0392b; }
+
+        .ip-primary {
+            padding: 7px 16px; font-size: 13px; font-family: inherit;
+            border: 1px solid #2b7de9; background: #2b7de9; color: #fff;
+            border-radius: 8px; cursor: pointer; white-space: nowrap;
+        }
+        .ip-primary:hover:not(:disabled) { background: #1f6bd0; }
+        .ip-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+        .ip-drop {
+            border: 1.5px dashed #c8d4e3; border-radius: 10px;
+            background: #fff; padding: 16px;
+            text-align: center; font-size: 13px; color: #8a97a8;
+            cursor: pointer;
+        }
+        .ip-drop:hover { border-color: #2b7de9; background: #f5f9ff; color: #2b7de9; }
+        .ip-drop.is-over { border-style: solid; border-color: #2b7de9; background: #eef5ff; color: #2b7de9; }
+        .ip-pick { text-decoration: underline; }
+
+        .ip-grid {
+            display: grid; gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+        }
+        .ip-item {
+            border: 1px solid #e5e9f0; border-radius: 10px; background: #fff;
+            padding: 8px; font-size: 12px; color: #5f6b7a;
+            min-width: 0; overflow: hidden;
+        }
+        .ip-item.is-err { border-color: #f0b9b3; background: #fff7f6; }
+        .ip-thumb {
+            width: 100%; height: 84px; object-fit: contain;
+            background: #f7f9fc; border-radius: 6px; margin-bottom: 6px; display: block;
+        }
+        .ip-name {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #3d4a5c;
+        }
+        .ip-meta { color: #a3aebd; margin-top: 2px; }
+        .ip-meta.bad { color: #c0392b; }
+        .ip-path {
+            margin-top: 4px; font-family: Consolas, Monaco, monospace; font-size: 11px;
+            color: #2b7de9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            cursor: pointer;
+        }
+        .ip-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .ip-btn {
+            padding: 3px 9px; font-size: 11.5px; font-family: inherit;
+            border: 1px solid #d8e0ea; background: #fff; color: #5f6b7a;
+            border-radius: 6px; cursor: pointer; white-space: nowrap;
+        }
+        .ip-btn:hover { border-color: #2b7de9; color: #2b7de9; }
+        .ip-btn.danger:hover { border-color: #c0392b; color: #c0392b; }
+        .ip-empty { font-size: 12px; color: #b6c0cd; padding: 8px 2px; }
+
+        .hint { font-size: 12px; color: #b6c0cd; }
+        kbd {
+            background: #eef2f7; border: 1px solid #dde4ec; border-radius: 4px;
+            padding: 1px 5px; font-size: 11px; font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="docid">docid: {{ doc.docid }}</span>
+    <input type="text" id="title" maxlength="200" placeholder="文档标题"
+           value="{{ doc.title }}">
+    <span id="status">未修改</span>
+    <button type="button" id="save-btn">保存（Ctrl+S）</button>
+</div>
+
+<div class="editorwrap">
+    <textarea id="editor" spellcheck="false"
+              placeholder="在这里粘贴 / 编写 HTML……">{{ doc.content_html }}</textarea>
+    <div class="editorfoot">
+        <span>HTML 长度：<b id="len-now">0</b> 字符</span>
+        <span>库中：<b id="len-saved">{{ doc.content_html|length }}</b> 字符</span>
+        <span class="spacer"></span>
+        <span class="hint">
+            <kbd>Tab</kbd> 缩进 · <kbd>Ctrl+S</kbd> 保存 ·
+            保存时会自动过滤危险标签并同步生成 Markdown
+        </span>
+    </div>
+</div>
+
+<!-- ==================== 图片区（批④） ==================== -->
+<div id="image-panel">
+
+    <div class="ip-head">
+        <b>图片</b>
+        <span class="hint">拖拽到虚线框 · 编辑框里 Ctrl+V 粘贴 · 点击选择文件</span>
+        <span class="spacer"></span>
+        <span class="ip-tip" id="ip-tip"></span>
+        <span class="hint" id="ip-count">0 个待上传</span>
+        <button type="button" class="ip-primary" id="ip-upload" disabled>上传</button>
+    </div>
+
+    <div class="ip-drop" id="ip-drop">
+        把图片拖到这里，或 <span class="ip-pick">点击选择文件</span>（可多选）
+        <input type="file" id="ip-file" multiple hidden
+               accept="image/png,image/jpeg,image/gif,image/webp,image/bmp">
+    </div>
+
+    <div class="ip-grid" id="ip-queue"></div>
+
+    <div class="ip-head">
+        <b>本页已上传</b>
+        <span class="spacer"></span>
+        <button type="button" class="ip-btn" id="ip-reload">刷新列表</button>
+    </div>
+    <div class="ip-grid" id="ip-list"></div>
+    <div class="ip-empty" id="ip-list-empty">还没有上传过图片</div>
+
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var SAVE_URL = '{% url "helpdoc_admin_save" %}';
+    var DOCID = '{{ doc.docid }}';
+
+    var editor = document.getElementById('editor');
+    var titleEl = document.getElementById('title');
+    var statusEl = document.getElementById('status');
+    var saveBtn = document.getElementById('save-btn');
+    var lenNow = document.getElementById('len-now');
+    var lenSaved = document.getElementById('len-saved');
+
+    var dirty = false;
+
+    function csrfToken() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (el) { return el.value; }
+        // 页面里没有表单的 csrf 输入时，从 cookie 取
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = cls || '';
+    }
+
+    function refreshLen() {
+        lenNow.textContent = editor.value.length;
+    }
+
+    function markDirty() {
+        if (!dirty) { dirty = true; setStatus('有未保存的修改'); }
+    }
+
+    editor.addEventListener('input', function () { refreshLen(); markDirty(); });
+    titleEl.addEventListener('input', markDirty);
+
+    // Tab 缩进 / Shift+Tab 反缩进。
+    // 注意：有选区时是「给每一行加 4 个空格」，不能把选中的内容替换掉。
+    editor.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') { return; }
+        e.preventDefault();
+
+        var v = editor.value;
+        var s = editor.selectionStart, en = editor.selectionEnd;
+        var blockStart = v.lastIndexOf('\n', s - 1) + 1;
+        var blockEnd = v.indexOf('\n', en);
+        if (blockEnd === -1) { blockEnd = v.length; }
+
+        var lines = v.slice(blockStart, blockEnd).split('\n');
+        var total = 0, first = 0, i, step, m;
+
+        for (i = 0; i < lines.length; i++) {
+            step = 0;
+            if (e.shiftKey) {
+                m = /^( {1,4}|\t)/.exec(lines[i]);
+                if (m) { lines[i] = lines[i].slice(m[0].length); step = -m[0].length; }
+            } else {
+                lines[i] = '    ' + lines[i]; step = 4;
+            }
+            if (i === 0) { first = step; }
+            total += step;
+        }
+
+        editor.value = v.slice(0, blockStart) + lines.join('\n') + v.slice(blockEnd);
+
+        if (s === en) {
+            editor.selectionStart = editor.selectionEnd = Math.max(blockStart, s + first);
+        } else {
+            editor.selectionStart = (s === blockStart) ? s : Math.max(blockStart, s + first);
+            editor.selectionEnd = Math.max(blockStart, en + total);
+        }
+        refreshLen(); markDirty();
+    });
+
+    function save() {
+        if (saveBtn.disabled) { return; }
+        saveBtn.disabled = true;
+        setStatus('保存中…');
+
+        var fd = new FormData();
+        fd.append('docid', DOCID);
+        fd.append('title', titleEl.value);
+        fd.append('content_html', editor.value);
+        fd.append('csrfmiddlewaretoken', csrfToken());
+
+        fetch(SAVE_URL, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (resp) {
+            return resp.text().then(function (t) {
+                var data = null;
+                try { data = JSON.parse(t); } catch (e) { data = null; }
+                return { status: resp.status, data: data };
+            });
+        })
+        .then(function (r) {
+            if (!r.data) {
+                setStatus('保存失败（HTTP ' + r.status + '），请稍后重试', 'err');
+                return;
+            }
+            if (r.data.status !== 'success') {
+                setStatus(r.data.message || '保存失败', 'err');
+                return;
+            }
+            dirty = false;
+            lenSaved.textContent = r.data.html_length;
+            setStatus('已保存 ' + r.data.updated_at, 'ok');
+        })
+        .catch(function (err) {
+            // 不要把真实原因吞掉：控制台留全量，页面上给出可判断的信息
+            console.error('保存请求未完成：', err);
+            setStatus('保存失败：请求未送达（' + (err && err.message ? err.message : '未知') + '）', 'err');
+        })
+        .then(function () {
+            saveBtn.disabled = false;
+        });
+    }
+
+    saveBtn.addEventListener('click', save);
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            save();
+        }
+    });
+
+    // 有未保存改动时离开页面给个拦截
+    window.addEventListener('beforeunload', function (e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    refreshLen();
+})();
+</script>
+
+<script>
+/* ==================== 图片区逻辑（批④） ==================== */
+(function () {
+    'use strict';
+
+    var DOCID     = '{{ doc.docid }}';
+    var MAX_BYTES = 5 * 1024 * 1024;
+    var OK_TYPES  = /^image\/(png|jpeg|gif|webp|bmp)$/;
+
+    var UPLOAD_URL = '{% url "helpdoc_admin_image_upload" %}';
+    var LIST_URL   = '{% url "helpdoc_admin_image_list" %}';
+    var DELETE_URL = '{% url "helpdoc_admin_image_delete" %}';
+
+    var dropEl    = document.getElementById('ip-drop');
+    var fileEl    = document.getElementById('ip-file');
+    var queueEl   = document.getElementById('ip-queue');
+    var listEl    = document.getElementById('ip-list');
+    var emptyEl   = document.getElementById('ip-list-empty');
+    var countEl   = document.getElementById('ip-count');
+    var tipEl     = document.getElementById('ip-tip');
+    var uploadBtn = document.getElementById('ip-upload');
+    var reloadBtn = document.getElementById('ip-reload');
+    var panelEl   = document.getElementById('image-panel');
+    var editor    = document.getElementById('editor');
+
+    var queue = [];        // 待上传：{ key, file, name, size, state, err, url }
+    var listItems = [];    // 已上传：{ key, name, size, url, time }
+    var seq = 0;
+    var busy = false;
+
+    /* ---------------- 小工具 ---------------- */
+
+    function csrf() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (el) { return el.value; }
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function human(n) {
+        n = n || 0;
+        if (n < 1024) { return n + ' B'; }
+        if (n < 1048576) { return (n / 1024).toFixed(1) + ' KB'; }
+        return (n / 1048576).toFixed(2) + ' MB';
+    }
+
+    var tipTimer = null;
+    function tip(text, isErr) {
+        tipEl.textContent = text || '';
+        tipEl.className = 'ip-tip' + (isErr ? ' err' : '');
+        if (tipTimer) { clearTimeout(tipTimer); }
+        if (text) {
+            tipTimer = setTimeout(function () { tipEl.textContent = ''; }, 4000);
+        }
+    }
+
+    function readText(resp) {
+        // 统一成 { http, data }，非 JSON（网关 502 / 登录页）不让它炸到用户脸上
+        return resp.text().then(function (t) {
+            var d = null;
+            try { d = JSON.parse(t); } catch (e) {
+                console.warn('图片接口返回的不是 JSON：', resp.status, t.slice(0, 300));
+                d = null;
+            }
+            return { http: resp.status, data: d };
+        });
+    }
+
+    function mkBtn(label, act, extraCls) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ip-btn' + (extraCls ? ' ' + extraCls : '');
+        b.textContent = label;
+        b.setAttribute('data-act', act);
+        return b;
+    }
+
+    function mkThumb(src) {
+        var img = document.createElement('img');
+        img.className = 'ip-thumb';
+        img.alt = '';
+        if (src) { img.src = src; }
+        return img;
+    }
+
+    /* ---------------- 入队 ---------------- */
+
+    function addFiles(files) {
+        var added = 0;
+        var skipped = 0;
+
+        Array.prototype.slice.call(files || []).forEach(function (f) {
+            if (!OK_TYPES.test(f.type || '') || f.size > MAX_BYTES) { skipped++; return; }
+            var it = {
+                key: 'q' + (++seq),
+                file: f,
+                name: f.name || ('粘贴图片-' + seq + '.png'),
+                size: f.size,
+                state: 'new',
+                err: '',
+                url: '',
+                dataUrl: ''
+            };
+            queue.push(it);
+            added++;
+            readThumb(it);
+        });
+
+        if (skipped) {
+            tip('已跳过 ' + skipped + ' 个：只收 png / jpg / gif / webp / bmp，且不超过 5 MB', true);
+        }
+        if (added) { renderQueue(); }
+        return added;
+    }
+
+    function readThumb(it) {
+        if (typeof FileReader === 'undefined') { return; }
+        var rd = new FileReader();
+        rd.onload = function () {
+            it.dataUrl = rd.result;
+            renderQueue();
+        };
+        rd.onerror = function () { /* 预览失败不影响上传 */ };
+        rd.readAsDataURL(it.file);
+    }
+
+    /* ---------------- 渲染 ---------------- */
+
+    function renderQueue() {
+        queueEl.innerHTML = '';
+        queue.forEach(function (it) { queueEl.appendChild(queueItem(it)); });
+        countEl.textContent = queue.length + ' 个待上传';
+        uploadBtn.disabled = busy || queue.length === 0;
+    }
+
+    function queueItem(it) {
+        var box = document.createElement('div');
+        box.className = 'ip-item' + (it.state === 'err' ? ' is-err' : '');
+        box.setAttribute('data-item', '1');
+        box.setAttribute('data-from', 'queue');
+        box.setAttribute('data-id', it.key);
+
+        box.appendChild(mkThumb(it.dataUrl));
+
+        var n = document.createElement('div');
+        n.className = 'ip-name';
+        n.textContent = it.name;
+        n.title = it.name;
+        box.appendChild(n);
+
+        var m = document.createElement('div');
+        if (it.state === 'err') {
+            m.className = 'ip-meta bad';
+            m.textContent = it.err || '上传失败';
+        } else if (it.state === 'busy') {
+            m.className = 'ip-meta';
+            m.textContent = '上传中…';
+        } else {
+            m.className = 'ip-meta';
+            m.textContent = human(it.size);
+        }
+        box.appendChild(m);
+
+        if (it.state !== 'busy') {
+            var acts = document.createElement('div');
+            acts.className = 'ip-acts';
+            acts.appendChild(mkBtn('移除', 'del', 'danger'));
+            box.appendChild(acts);
+        }
+        return box;
+    }
+
+    function renderList() {
+        listEl.innerHTML = '';
+        emptyEl.style.display = listItems.length ? 'none' : '';
+
+        listItems.forEach(function (it) {
+            var box = document.createElement('div');
+            box.className = 'ip-item';
+            box.setAttribute('data-item', '1');
+            box.setAttribute('data-from', 'list');
+            box.setAttribute('data-id', it.key);
+
+            box.appendChild(mkThumb(it.url));
+
+            var n = document.createElement('div');
+            n.className = 'ip-name';
+            n.textContent = it.name || it.key;
+            n.title = n.textContent;
+            box.appendChild(n);
+
+            var m = document.createElement('div');
+            m.className = 'ip-meta';
+            m.textContent = human(it.size) + ' · ' + (it.time || '');
+            box.appendChild(m);
+
+            var p = document.createElement('div');
+            p.className = 'ip-path';
+            p.textContent = it.url;
+            p.title = '点击复制路径';
+            p.setAttribute('data-act', 'copy');
+            box.appendChild(p);
+
+            var acts = document.createElement('div');
+            acts.className = 'ip-acts';
+            acts.appendChild(mkBtn('插入编辑器', 'insert'));
+            acts.appendChild(mkBtn('复制路径', 'copy'));
+            acts.appendChild(mkBtn('删除', 'delete', 'danger'));
+            box.appendChild(acts);
+
+            listEl.appendChild(box);
+        });
+    }
+
+    /* ---------------- 复制 / 插入 ---------------- */
+
+    function copyText(text, what) {
+        what = what || '路径';
+
+        function fallback() {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(ta);
+            return ok;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+                function () { tip('已复制' + what); },
+                function (err) {
+                    console.warn('剪贴板 API 失败，走降级方案：', err);
+                    if (fallback()) { tip('已复制' + what); }
+                    else { tip('复制失败，请手动选中复制', true); }
+                }
+            );
+        } else if (fallback()) {
+            tip('已复制' + what);
+        } else {
+            tip('复制失败，请手动选中复制', true);
+        }
+    }
+
+    function insertImg(url, name) {
+        var tag = '<img src="' + url + '" alt="' + String(name || '').replace(/"/g, '&quot;') + '">';
+        var v = editor.value;
+        var s = editor.selectionStart;
+        var e = editor.selectionEnd;
+        var pre = (s > 0 && v.charAt(s - 1) !== '\n') ? '\n' : '';
+        var add = pre + tag + '\n';
+
+        editor.value = v.slice(0, s) + add + v.slice(e);
+        editor.selectionStart = editor.selectionEnd = s + add.length;
+        editor.focus();
+        // 触发你页面里已有的 input 处理：刷新字数 + 标记「有未保存的修改」
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        tip('已插入到光标处，记得 Ctrl+S 保存');
+    }
+
+    /* ---------------- 上传 ---------------- */
+
+    function upload() {
+        if (busy) { return; }
+        var pending = queue.filter(function (x) { return x.state === 'new' || x.state === 'err'; });
+        if (!pending.length) { return; }
+
+        busy = true;
+        uploadBtn.disabled = true;
+
+        var done = 0, failed = 0;
+        var chain = Promise.resolve();
+
+        pending.forEach(function (it) {
+            chain = chain.then(function () {
+                it.state = 'busy';
+                it.err = '';
+                renderQueue();
+
+                var fd = new FormData();
+                fd.append('docid', DOCID);
+                fd.append('file', it.file, it.name);
+                fd.append('csrfmiddlewaretoken', csrf());
+
+                return fetch(UPLOAD_URL, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(readText).then(function (res) {
+                    if (!res.data || res.data.status !== 'success') {
+                        it.state = 'err';
+                        it.err = (res.data && res.data.message) || ('HTTP ' + res.http);
+                        failed++;
+                        return;
+                    }
+                    it.state = 'ok';
+                    it.url = res.data.url;
+                    done++;
+                }, function (err) {
+                    console.error('上传请求未完成：', err);
+                    it.state = 'err';
+                    it.err = '请求未送达（' + (err && err.message ? err.message : '未知') + '）';
+                    failed++;
+                });
+            });
+        });
+
+        chain.then(function () {
+            busy = false;
+            // 传成功的从「待上传」里摘掉，交给下面的已上传列表展示
+            queue = queue.filter(function (x) { return x.state !== 'ok'; });
+            renderQueue();
+
+            if (done) {
+                tip('已上传 ' + done + ' 张' + (failed ? '，' + failed + ' 张失败可重试' : ''));
+                loadList();
+            } else if (failed) {
+                tip(failed + ' 张上传失败，可点「上传」重试', true);
+            }
+        });
+    }
+
+    /* ---------------- 已上传列表 ---------------- */
+
+    function loadList() {
+        return fetch(LIST_URL + '?docid=' + encodeURIComponent(DOCID), {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (r) {
+            return r.json();
+        }).then(function (d) {
+            var items = (d && d.items) || [];
+            listItems = items.map(function (x) {
+                return {
+                    key: String(x.image_id),
+                    name: x.original_name || '',
+                    size: x.file_size,
+                    url: x.url,
+                    time: x.uploaded_at || ''
+                };
+            });
+            renderList();
+        }, function (err) {
+            console.error('加载图片列表失败：', err);
+            emptyEl.textContent = '加载失败，点「刷新列表」重试';
+            emptyEl.style.display = '';
+        });
+    }
+
+    function removeImage(id) {
+        if (!window.confirm('删除后，正文里已经引用这张图的位置会变成坏图。确定删除？')) { return; }
+
+        var fd = new FormData();
+        fd.append('image_id', id);
+        fd.append('csrfmiddlewaretoken', csrf());
+
+        fetch(DELETE_URL, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(readText).then(function (res) {
+            if (res.data && res.data.status === 'success') {
+                tip('已删除');
+                loadList();
+            } else {
+                tip((res.data && res.data.message) || ('删除失败（HTTP ' + res.http + '）'), true);
+            }
+        }, function (err) {
+            console.error('删除请求未完成：', err);
+            tip('删除请求未送达', true);
+        });
+    }
+
+    /* ---------------- 事件 ---------------- */
+
+    function findItem(el) {
+        var box = el.closest ? el.closest('[data-item]') : null;
+        if (!box) { return null; }
+        var id = box.getAttribute('data-id');
+        var from = box.getAttribute('data-from');
+        var arr = (from === 'queue') ? queue : listItems;
+        for (var i = 0; i < arr.length; i++) {
+            if (String(arr[i].key) === String(id)) { return { item: arr[i], from: from }; }
+        }
+        return null;
+    }
+
+    panelEl.addEventListener('click', function (e) {
+        var actEl = e.target.closest ? e.target.closest('[data-act]') : null;
+        if (!actEl) { return; }
+        var found = findItem(e.target);
+        if (!found) { return; }
+
+        var act = actEl.getAttribute('data-act');
+        var it = found.item;
+
+        if (act === 'copy') {
+            copyText(it.url);
+        } else if (act === 'insert') {
+            insertImg(it.url, it.name);
+        } else if (act === 'delete') {
+            removeImage(it.key);
+        } else if (act === 'del') {
+            queue = queue.filter(function (x) { return x.key !== it.key; });
+            renderQueue();
+        }
+    });
+
+    // 拖拽
+    ['dragenter', 'dragover'].forEach(function (name) {
+        dropEl.addEventListener(name, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropEl.classList.add('is-over');
+        });
+    });
+    ['dragleave', 'dragend'].forEach(function (name) {
+        dropEl.addEventListener(name, function () {
+            dropEl.classList.remove('is-over');
+        });
+    });
+    dropEl.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropEl.classList.remove('is-over');
+
+        var dt = e.dataTransfer;
+        var files = (dt && dt.files) ? dt.files : null;
+        if (files && files.length) { addFiles(files); }
+        else { tip('没拿到文件，请点「点击选择文件」', true); }
+    });
+
+    // 点击选择
+    dropEl.addEventListener('click', function () { fileEl.click(); });
+    fileEl.addEventListener('change', function () {
+        addFiles(fileEl.files);
+        fileEl.value = '';      // 清掉，同一张图还能再选一次
+    });
+
+    // 粘贴（编辑框里 Ctrl+V 也行，因为监听在 document 上）
+    document.addEventListener('paste', function (e) {
+        var items = (e.clipboardData && e.clipboardData.items) || [];
+        var files = [];
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].getAsFile) {
+                var f = items[i].getAsFile();
+                if (f) { files.push(f); }
+            }
+        }
+        if (!files.length) { return; }          // 普通文字粘贴，不干预
+        if (!addFiles(files)) { return; }       // 全是非法文件的话，也别拦粘贴
+        e.preventDefault();
+        tip('已加入待上传队列，点「上传」提交');
+    });
+
+    uploadBtn.addEventListener('click', upload);
+    reloadBtn.addEventListener('click', function () { loadList(); });
+
+    // 初始：算一次字数（图片区不影响），并拉一次已上传列表
+    renderQueue();
+    loadList();
+})();
+</script>
+
+{% csrf_token %}
+</body>
+</html>

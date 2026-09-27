@@ -5,6 +5,8 @@ PERM_HELPCENTER_DOC_VIEW = 'helpcenter.doc.view'
 PERM_HELPCENTER_DOC_EDIT = 'helpcenter.doc.edit'
 PERM_HELPCENTER_DOC_DELETE = 'helpcenter.doc.delete'
 PERM_HELPCENTER_IMAGE_UPLOAD = 'helpcenter.image.upload'
+PERM_HELPCENTER_IMAGE_DELETE = 'helpcenter.image.delete'
+
 
 # ---------------- 论坛（现有 ad_create_comment 那个功能） ----------------
 PERM_FORUM_COMMENT_CREATE = 'forum.comment.create'
@@ -17,6 +19,7 @@ ALL_PERMISSIONS = {
     PERM_HELPCENTER_DOC_EDIT: '帮助中心 - 编辑文档',
     PERM_HELPCENTER_DOC_DELETE: '帮助中心 - 删除文档',
     PERM_HELPCENTER_IMAGE_UPLOAD: '帮助中心 - 上传图片',
+    PERM_HELPCENTER_IMAGE_DELETE: '帮助中心 - 删除图片',
     PERM_FORUM_COMMENT_CREATE: '论坛 - 生成回复',
 }
 
