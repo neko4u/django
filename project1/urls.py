@@ -18,6 +18,7 @@ from django.urls import path
 from apps.login import views as login_views
 from apps.suadmin import views as suadmin_views
 from apps.frpServer import views as frpServer_views
+from apps.helpdocs import admin_views as helpdocs_admin_views
 from django.views.generic import RedirectView
 from django.urls import include
 from apps.llm_chat import views as chat_views
@@ -50,6 +51,11 @@ urlpatterns = [
     path('suadmin/', suadmin_views.admin_home, name="admin_panel"),
     path('ad_create_comment/',login_views.ad_create_comment,name="ad_create_comment"),
     path('task-list-api/', login_views.task_list_api, name='task_list_api'),
+       # helpdoc
+    path('suadmin/helpdoc/', helpdocs_admin_views.doc_index, name='helpdoc_admin_index'),
+    path('suadmin/helpdoc/save/', helpdocs_admin_views.doc_save, name='helpdoc_admin_save'),
+    path('suadmin/helpdoc/<int:docid>/', helpdocs_admin_views.doc_edit, name='helpdoc_admin_edit'),
+
     # frp
         # frp_user_index : 同主页,限制访问内容
     path('findex/', login_views.findex, name='findex'),
