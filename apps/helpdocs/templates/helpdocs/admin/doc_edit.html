@@ -136,6 +136,18 @@
         .vis input { cursor: pointer; margin: 0; }
         .vis.is-off { color: #c77700; border-color: #f0dfc0; background: #fffaf0; }
 
+        /* 「返回帮助中心」开关 */
+        .allow-back {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 13px; color: #5f6b7a; white-space: nowrap;
+            cursor: pointer; user-select: none;
+            padding: 5px 10px; border: 1px solid #e5e9f0; border-radius: 8px;
+            background: #fafbfd;
+        }
+        .allow-back:hover { border-color: #c8d4e3; }
+        .allow-back input { cursor: pointer; margin: 0; }
+        .allow-back.is-off { color: #8a97a8; border-color: #e0e4ea; background: #f7f8fa; }
+
         .hint { font-size: 12px; color: #b6c0cd; }
         kbd {
             background: #eef2f7; border: 1px solid #dde4ec; border-radius: 4px;
@@ -154,6 +166,11 @@
     <input type="text" id="title" maxlength="200" placeholder="文档标题"
            value="{{ doc.title }}">
     <span id="status">未修改</span>
+    <label class="allow-back{% if not doc.allow_back_link %} is-off{% endif %}" id="allow-back-wrap"
+           for="allow-back" title="关闭后，这篇文档页面底部不显示「← 返回帮助中心」">
+        <input type="checkbox" id="allow-back"{% if doc.allow_back_link %} checked{% endif %}>
+        <span id="allow-back-label">底部返回入口：{% if doc.allow_back_link %}开{% else %}关{% endif %}</span>
+    </label>
     <button type="button" id="save-btn">保存（Ctrl+S）</button>
 </div>
 
@@ -214,6 +231,9 @@
     var saveBtn = document.getElementById('save-btn');
     var lenNow = document.getElementById('len-now');
     var lenSaved = document.getElementById('len-saved');
+    var backWrap = document.getElementById('allow-back-wrap');
+    var backChk = document.getElementById('allow-back');
+    var backLabel = document.getElementById('allow-back-label');
     var visWrap = document.getElementById('vis-wrap');
     var visChk = document.getElementById('is-visible');
     var visLabel = document.getElementById('vis-label');
@@ -243,6 +263,15 @@
 
     editor.addEventListener('input', function () { refreshLen(); markDirty(); });
     titleEl.addEventListener('input', markDirty);
+
+    // 「底部返回入口」开关
+    function refreshBack() {
+        var on = backChk.checked;
+        backLabel.textContent = '底部返回入口：' + (on ? '开' : '关');
+        backWrap.classList.toggle('is-off', !on);
+    }
+
+    backChk.addEventListener('change', function () { refreshBack(); markDirty(); });
 
     // 「前台可见」开关：文案跟着勾选状态走，隐藏时整块变橙色
     function refreshVis() {
@@ -301,6 +330,7 @@
         fd.append('title', titleEl.value);
         fd.append('content_html', editor.value);
         fd.append('csrfmiddlewaretoken', csrfToken());
+        fd.append('allow_back_link', backChk.checked ? '1' : '0');
         fd.append('is_visible', visChk.checked ? '1' : '0');
 
         fetch(SAVE_URL, {

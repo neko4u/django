@@ -84,6 +84,11 @@ def doc_save(request):
     if raw_visible is not None:
         doc.is_visible = raw_visible in ('1', 'true', 'True', 'on', 'yes')
 
+    # 「底部返回入口」开关：同样「没带这个字段就保持原值」，防止旧缓存页面把它悄悄关掉。
+    raw_back = request.POST.get('allow_back_link')
+    if raw_back is not None:
+        doc.allow_back_link = raw_back in ('1', 'true', 'True', 'on', 'yes')
+
     doc.title = title
     doc.content_html = safe_html
     doc.content_md = markdown

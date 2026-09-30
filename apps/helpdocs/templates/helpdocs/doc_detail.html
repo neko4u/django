@@ -206,7 +206,9 @@
         <p class="doc-empty">这篇文档还没有内容。</p>
         {% endif %}
 
+        {% if doc.allow_back_link %}
         <div class="doc-foot"><a href="/help/">← 返回帮助中心</a></div>
+        {% endif %}
     </main>
 
 </div>

@@ -74,6 +74,10 @@ class HelpCenterDoc(models.Model):
     # 由 content_html 自动转换生成，主要用于导出 / 备份，不参与编辑。
     content_md = models.TextField(blank=True, default='', verbose_name='正文Markdown')
 
+    # 是否在文档页底部显示「← 返回帮助中心」。
+    # False = 不显示（例如这篇是发给外部人看的，不想让他顺着返回入口跳到帮助中心看到别的文档）。
+    allow_back_link = models.BooleanField(default=True, verbose_name='允许返回帮助中心')
+
     # 前台是否可见。False = 下线：文档列表里不出现，直接输 /help/<docid>/ 也返回 404。
     # 默认 True，所以已有文档和新建文档都不受影响。
     is_visible = models.BooleanField(default=True, db_index=True, verbose_name='前台可见')
