@@ -28,6 +28,7 @@
   .top{display:flex;justify-content:space-between;align-items:baseline;max-width:1120px;}
   a.back{font-size:13px;color:#2b7de9;text-decoration:none;}
   .tag{color:#2b7de9;font-size:12px;}
+  .tip{color:#8a97a8;font-weight:400;font-size:12px;}
 </style>
 </head>
 <body>
@@ -38,7 +39,8 @@
 <p class="hint">
   文件存放目录：<code>{{ current_dir }}</code>（上限 {{ max_upload_mb|floatformat:"0" }} MB / 个）<br>
   版本号在库里按 6 位数字存储（1.0.1 → 010001），所以版本号最大的一条就是最新版本，前台下「点击下载」取的就是它。<br>
-  客户端下载到本地的文件名固定为 <code>{{ download_name }}</code>，与服务器上的实际文件名无关。
+  <strong>文件名称由你自己填</strong>（服务器上保存的名字，也是客户端下载下来的名字），留空才用上传文件的原始名字；填的名字不会自动加版本号。<br>
+  同一个文件名称只能属于一个版本 —— 想保留历史版本，记得在名字里带上版本号（如 <code>SorielConnection_v0.1.1.exe</code>）。
 </p>
 
 {% if messages %}
@@ -52,8 +54,15 @@
     <div class="row">
       <div>
         <label for="id_version">版本号</label>
-        <input type="text" name="version" id="id_version" placeholder="1.0.1" required>
+        <input type="text" name="version" id="id_version" placeholder="0.1.1" required>
       </div>
+      <div>
+        <label for="id_file_name">文件名称 <span class="tip">留空 = 用上传文件的原始名字</span></label>
+        <input type="text" name="file_name" id="id_file_name"
+               placeholder="SorielConnection_v0.1.1.exe" style="width:380px;">
+      </div>
+    </div>
+    <div class="row" style="margin-top:4px;">
       <div>
         <label for="id_file">客户端文件</label>
         <input type="file" name="file" id="id_file" required>
@@ -115,5 +124,18 @@
   <p class="hint" style="margin:0;">还没有任何版本记录。上面传一个，前台就会自动指向它。</p>
 {% endif %}
 </div>
+<script>
+  // 选好文件后，如果「文件名称」还空着，就自动填成上传文件的原始名字（仍然可以手改）
+  (function () {
+    var picker = document.getElementById('id_file');
+    var box = document.getElementById('id_file_name');
+    if (!picker || !box) { return; }
+    picker.addEventListener('change', function () {
+      if (!box.value && this.files && this.files.length) {
+        box.value = this.files[0].name;
+      }
+    });
+  })();
+</script>
 </body>
 </html>

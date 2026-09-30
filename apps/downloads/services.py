@@ -8,7 +8,6 @@
 import hashlib
 import logging
 import os
-import re
 
 from .conf import conf
 from .models import ClientVersion
@@ -81,35 +80,44 @@ def file_path(record):
 
 # ==================== 写（后台上传用） ====================
 
-# 文件名里只留这些字符，其余换成下划线：防掉 ../ 和中文空格造成的怪文件名
-_SAFE = re.compile(r'[^0-9A-Za-z._\-]')
+# 文件名里不允许出现的字符：路径分隔符、Windows 非法字符、控制字符
+# 注意：这里故意不写反斜杠字面量，统一用 chr(92)，免得转义层数写错
+_BACKSLASH = chr(92)
+_ILLEGAL_MAP = {ord(c): '_' for c in ('/', ':', '*', '?', '"', '<', '>', '|', _BACKSLASH)}
+_ILLEGAL_MAP.update({i: '_' for i in range(32)})
 
-def versioned_filename(original_name, display):
-    """把上传的文件名改成带版本号的名字，避免历史版本互相覆盖。
+def safe_filename(name):
+    """净化一个文件名：只取最后一段（防掉 ../），并把非法字符换成下划线。
 
-        SorielConnection.exe + 1.0.1 -> SorielConnection-1.0.1.exe
-
-    文件名里已经带这个版本号时不重复追加（传 SorielConnection-1.0.1.exe 不会变成
-    SorielConnection-1.0.1-1.0.1.exe）。
+    中英文、数字、空格、下划线、点、短横线都原样保留 ——
+    例如 ``SorielConnection_v0.1.1.exe 会一字不改地留下。
     """
-    name = os.path.basename(str(original_name or '')).strip()
-    stem, ext = os.path.splitext(name)
-    stem = _SAFE.sub('_', stem).strip('._-') or 'client'
-    ext = _SAFE.sub('', ext)
+    text = str(name or '').replace(_BACKSLASH, '/')   # 反斜杠路径也当分隔符处理
+    text = text.split('/')[-1]                        # 去掉任何路径成分
+    text = text.translate(_ILLEGAL_MAP)
+    return text.strip().strip('.')
 
-    suffix = '-%s' % display
-    if stem.endswith(suffix):
-        stem = stem[: -len(suffix)]
-    return '%s%s%s' % (stem, suffix, ext)
+def final_filename(typed_name, original_name):
+    """决定最终落盘 / 客户端下载用的文件名。
 
-def store_upload(uploaded, display):
-    """把上传的文件写进 ``conf.DIR``，返回 ``(disk_name, md5, size)``。
+    * 管理员在「文件名称」里填了就听管理员的（原样保存，不自动加版本号）；
+    * 留空则用上传文件的原始名字；
+    * 填的名字没写扩展名时，自动补上原文件的扩展名。
+    """
+    typed = safe_filename(typed_name)
+    if not typed:
+        return safe_filename(original_name)
+    if '.' not in typed:
+        typed += os.path.splitext(safe_filename(original_name))[1]
+    return typed
+
+def store_upload(uploaded, disk_name):
+    """把上传的文件按 ``disk_name 写进 ``conf.DIR``，返回 ``(disk_name, md5, size)``。
 
     边写边算 MD5，52MB 的文件也不会整个读进内存。
     先写成 .part 再改名，避免半个文件被下载到。
     """
     os.makedirs(conf.DIR, exist_ok=True)
-    disk_name = versioned_filename(getattr(uploaded, 'name', ''), display)
     final_path = os.path.join(conf.DIR, disk_name)
     tmp_path = final_path + '.part'
 

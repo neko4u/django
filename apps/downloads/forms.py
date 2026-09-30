@@ -1,9 +1,13 @@
 # apps/downloads/forms.py
-"""后台「上传新版本」表单：只负责校验，落盘在 services.store_upload 里做。"""
+"""后台「上传新版本」表单：只负责校验，落盘在 services.store_upload 里做。
+
+文件名由管理员自己填（上传页那个「文件名称」输入框），留空才用上传文件的原始名字。
+"""
 
 from django import forms
 
 from .conf import conf
+from .services import final_filename
 from .versioning import display_version, parse_version
 
 def _allowed_exts():
@@ -20,6 +24,12 @@ class VersionUploadForm(forms.Form):
         max_length=16,
         label='版本号',
         help_text='形如 1.0.1（3 段，每段 1~2 位数字）',
+    )
+    file_name = forms.CharField(
+        max_length=255,
+        required=False,
+        label='文件名称',
+        help_text='服务器上保存的名字，也是客户端下载下来的名字。留空则用上传文件的原始名字。',
     )
     file = forms.FileField(label='客户端文件')
     enable = forms.BooleanField(required=False, initial=True, label='上传后立即展示')
@@ -50,6 +60,27 @@ class VersionUploadForm(forms.Form):
                                         % (ext, '、'.join(sorted(allowed))))
         return upload
 
+    def clean(self):
+        """把「文件名称」定下来，并检查它的扩展名。"""
+        cleaned = super().clean()
+        upload = cleaned.get('file')
+        if upload is None:
+            return cleaned
+
+        final = final_filename(cleaned.get('file_name') or '',
+                               getattr(upload, 'name', ''))
+        if not final:
+            raise forms.ValidationError('文件名称不能为空')
+
+        allowed = _allowed_exts()
+        ext = final.rsplit('.', 1)[-1].lower() if '.' in final else ''
+        if allowed and ext not in allowed:
+            raise forms.ValidationError('文件名称的扩展名「.%s」不在允许范围内，只允许：%s'
+                                        % (ext, '、'.join(sorted(allowed))))
+
+        cleaned['file_name'] = final          # 定稿：后面视图直接用这个名字落盘
+        return cleaned
+
     # ---- 给视图用的小工具 ----
 
     @property
@@ -62,3 +93,8 @@ class VersionUploadForm(forms.Form):
         """给人看的简写（校验失败时是空串）。"""
         six = self.six
         return display_version(six) if six else ''
+
+    @property
+    def disk_name(self):
+        """最终落盘 / 下载用的文件名（校验失败时是空串）。"""
+        return (self.cleaned_data.get('file_name') or '') if self.is_valid() else ''

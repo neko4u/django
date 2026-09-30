@@ -50,6 +50,7 @@ def version_upload(request):
     six = form.six
     display = form.display
     upload = form.cleaned_data['file']
+    disk_name = form.disk_name            # 「文件名称」定稿后的名字
     old = services.version_by_six(six)
 
     if old is not None and not form.cleaned_data['replace']:
@@ -57,8 +58,15 @@ def version_upload(request):
                        % (display, old.file_name))
         return redirect('download_admin_index')
 
+    # 同一个文件名已经被别的版本占了：磁盘上就一个文件，两个版本共用会互相覆盖
+    holder = ClientVersion.objects.filter(file_name=disk_name).exclude(version=six).first()
+    if holder is not None:
+        messages.error(request, '文件名称 %s 已经被版本 %s 占用了，请换一个名字。'
+                       % (disk_name, holder.display_version))
+        return redirect('download_admin_index')
+
     try:
-        disk_name, md5, size = services.store_upload(upload, display)
+        _, md5, size = services.store_upload(upload, disk_name)
     except OSError as exc:
         logger.exception('客户端文件落盘失败')
         messages.error(request, '文件写入失败：%s（检查目录 %s 是否存在且可写）'
