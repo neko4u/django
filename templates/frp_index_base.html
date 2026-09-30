@@ -9,6 +9,45 @@
     <title>{% block title %}default{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'login/css/nav.css' %}">
     <script src="{% static 'login/js/nav.js' %}" defer></script>
+    <script src="{% static 'login/js/nav.js' %}" defer></script>
+    <script>
+    // session 失效（后端返回 401）时统一跳回 frp 登录页。
+    // 覆盖 fetch 与 XMLHttpRequest 两条路径 —— 页面里签到/兑换/历史连接都用它们发请求。
+    (function () {
+        var LOGIN_URL = "{% url 'flogin' %}";
+        var redirected = false;
+
+        function toLogin() {
+            if (redirected) return;
+            redirected = true;
+            location.href = LOGIN_URL;
+        }
+        window.__frpToLogin = toLogin;      // 其它脚本也可以手动调用
+
+        var rawFetch = window.fetch;
+        if (rawFetch) {
+            window.fetch = function () {
+                var p = rawFetch.apply(this, arguments);
+                if (p && typeof p.then === 'function') {
+                    return p.then(function (resp) {
+                        if (resp && resp.status === 401) { toLogin(); }
+                        return resp;
+                    });
+                }
+                return p;
+            };
+        }
+
+        var rawOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function () {
+            this.addEventListener('load', function () {
+                if (this.status === 401) { toLogin(); }
+            });
+            return rawOpen.apply(this, arguments);
+        };
+    })();
+    </script>
+
 </head>
 <script>
     function handlePageLoad() {

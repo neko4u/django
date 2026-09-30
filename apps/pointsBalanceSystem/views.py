@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from apps.pointsBalanceSystem.models import (PointExchangeActivity,UserPoint)
 from apps.pointsBalanceSystem.forms import (ExchangeFRPForm)
 from apps.pointsBalanceSystem.services import (PointsExchangeService)
-from apps.login.decorators import (login_required_view)
+from apps.login.decorators import (login_required_view, login_url_for)
 from apps.login.models import (UserInfo)
 
 @login_required_view
@@ -14,7 +14,7 @@ def exchange_list_view(request):
         user = UserInfo.objects.get(uid=request.session['info']['uid'])
     except UserInfo.DoesNotExist:
         messages.error(request,'用户不存在，请重新登录')
-        return redirect('login')
+        return redirect(login_url_for(request))
 
     activities = (PointExchangeActivity.objects.filter(enable=True).order_by('-created_at'))
     points_balance = 0
@@ -50,7 +50,7 @@ def exchange_detail_view(request):
             '用户不存在，请重新登录'
         )
 
-        return redirect('login')
+        return redirect(login_url_for(request))
 
     aid = request.GET.get('aid')
     if not aid:

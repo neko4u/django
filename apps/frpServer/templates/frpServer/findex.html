@@ -70,7 +70,7 @@
 
 <div id="sec3-content" class="tab-content">
     {% if activity %}
-        {% include "pointsBalanceSystem/partials/_exchange_detail_body.html" %}
+    {% include "pointsBalanceSystem/partials/_exchange_detail_body.html" with from_frp=1 %}
     {% else %}
         <h1 style="font-size: 48px;">暂无可兑换活动</h1>
     {% endif %}

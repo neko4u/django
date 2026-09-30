@@ -53,9 +53,14 @@ OPENAI_KIMI_BASE_URL = config.get('openai_kimi', {}).get('base_url', '')
 SECRET_KEY = config.get('secret_key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool(config.get('debug', False))
 
-ALLOWED_HOSTS = config.get('allowed_hosts', [])
+ALLOWED_HOSTS = config.get('allowed_hosts') or [
+    'sorielflow.com',
+    'connections.sorielflow.com',
+    '127.0.0.1',
+    'localhost',
+]
 
 
 # Application definition

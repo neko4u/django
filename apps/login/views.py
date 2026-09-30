@@ -264,7 +264,6 @@ def _email_ticket_ok(request, expected_email, scene='change_email'):
     return True, ''
 
 
-@login_required_view
 def modify_info(request, mode='general'):
     """修改资料。
 
@@ -272,7 +271,14 @@ def modify_info(request, mode='general'):
     mode='general'：保持原有行为（通用页面等后续指令再切）。
     """
     is_frp = (mode == 'frp')
+
+    # session 失效时按入口回对应登录页：frp 版 -> /flogin/，通用版 -> /login/
+    # （原来由 @login_required_view 统一跳 /login/，frp 用户会被带到错误的登录页）
+    if not request.session.get('is_logged_in'):
+        return redirect('flogin' if is_frp else 'login')
+
     home_url = reverse('findex') if is_frp else reverse('index')
+
     login_name = 'flogin' if is_frp else 'login'
     template = 'login/modify_info.html'
 
@@ -444,7 +450,7 @@ def index(request):
 
 #  ------ frp 主页,兑换活动固定2
 FINDEX_EXCHANGE_AID = 2
-@login_required_view
+@login_required_view(to='flogin')
 def findex(request):
     context = {}
 

@@ -49,7 +49,7 @@
 
                 <form id="exchangeForm"
                       method="post"
-                      action="{% url 'points:exchange_detail' %}?aid={{ activity.id }}">
+                      action="{% url 'points:exchange_detail' %}?aid={{ activity.id }}{% if from_frp %}&from=frp{% endif %}">
 
                     {% csrf_token %}
 
