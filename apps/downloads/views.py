@@ -93,11 +93,15 @@ def download_file(request):
 
     if record is not None:
         path = services.file_path(record)
+        # 下载到客户端的文件名也带版本号：SorielConnection-1.0.1.exe
+        # （用服务器上的实际文件名，保证跟后台列表里「文件名称」一列完全一致）
+        out_name = os.path.basename(path)
         version_text = record.display_version
         lookup = f'v{version_text}'
     else:
-        # legacy：版本表还没数据，走旧的单文件
+        # legacy：版本表还没数据，走旧的单文件，这时候没有版本号可用
         path = os.path.join(conf.DIR, conf.FILE_NAME)
+        out_name = conf.FILE_NAME
         version_text = ''
         lookup = 'legacy'
 
@@ -114,9 +118,6 @@ def download_file(request):
 
     logger.info(f'客户端下载 ip={ip} 第 {used}/{conf.MAX_PER_IP_PER_HOUR} 次 '
                 f'{lookup} file={os.path.basename(path)}')
-
-    # 下载到客户端的文件名固定用 conf.FILE_NAME，和服务器上的实际文件名解耦
-    out_name = conf.FILE_NAME
 
     # 交给 nginx 发文件（大文件推荐，需要配 nginx）
     if conf.USE_X_ACCEL:
