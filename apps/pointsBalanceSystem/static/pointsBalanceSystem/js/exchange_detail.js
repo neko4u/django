@@ -77,14 +77,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     });
 
-    /* ---------------- 关闭 Django messages ---------------- */
-    document.querySelectorAll('.message-close').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const box = this.closest('.message');
-            if (box) box.remove();
-        });
-    });
+    /* ---------------- Django messages：点 × 关闭 + 到点自动消失 ---------------- */
+    (function () {
+        const AUTO_HIDE_MS = 5000;
+        const boxes = document.querySelectorAll('.message-area .message');
 
+        function hide(box) {
+            if (!box || box.dataset.hiding === '1') { return; }
+            box.dataset.hiding = '1';
+            box.style.transition = 'opacity .4s ease, transform .4s ease';
+            box.style.opacity = '0';
+            box.style.transform = 'translateY(-8px)';
+            setTimeout(() => {
+                const area = box.parentElement;
+                box.remove();
+                if (area && !area.querySelector('.message')) { area.remove(); }
+            }, 400);
+        }
+
+        boxes.forEach(function (box, i) {
+            const btn = box.querySelector('.message-close');
+            if (btn) {
+                btn.addEventListener('click', function () { hide(box); });
+            }
+            // 多条消息错开一点，避免同时消失
+            setTimeout(() => hide(box), AUTO_HIDE_MS + i * 400);
+        });
+    })();
 });
 
 

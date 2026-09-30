@@ -66,8 +66,63 @@
         opacity: 1;
         visibility: visible;
     }
+    /* 顶部消息条（注册成功提示等）：显示几秒后自动消失 */
+    .flash-area {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        width: 92%;
+        max-width: 420px;
+    }
+
+    .flash {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(20, 40, 80, .18);
+        transition: opacity .4s ease, transform .4s ease;
+    }
+
+    .flash-success { background: #1c7c3c; }
+    .flash-error   { background: #b3261e; }
+    .flash-info,
+    .flash-warning { background: #2b7de9; }
+
+    .flash-hide {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    .flash-close {
+        background: transparent;
+        border: 0;
+        color: #fff;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 2px;
+    }
 </style>
 <body>
+    {% if messages %}
+    <div class="flash-area" id="flashArea">
+        {% for message in messages %}
+        <div class="flash flash-{{ message.tags|default:'info' }}">
+            <span>{{ message }}</span>
+            <button type="button" class="flash-close" aria-label="关闭">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="login-container">
         <h1 style="user-select: none;">Login</h1>
         <form id="loginForm" method="post" autocomplete="off">
@@ -173,6 +228,59 @@
             });
         }());
     </script>
-    
+        <script>
+        // 顶部消息条：点 × 立即关闭；不点也在 AUTO_HIDE_MS 毫秒后自动淡出消失
+        (function () {
+            var AUTO_HIDE_MS = 5000;
+            var area = document.getElementById('flashArea');
+            if (!area) { return; }
+
+            function hide(box) {
+                if (!box || box.dataset.hiding === '1') { return; }
+                box.dataset.hiding = '1';
+                box.classList.add('flash-hide');
+                setTimeout(function () {
+                    box.remove();
+                    if (!area.children.length) { area.remove(); }
+                }, 400);
+            }
+
+            Array.prototype.forEach.call(area.querySelectorAll('.flash'), function (box, i) {
+                var btn = box.querySelector('.flash-close');
+                if (btn) {
+                    btn.addEventListener('click', function () { hide(box); });
+                }
+                // 多条消息错开一点，避免同时消失
+                setTimeout(function () { hide(box); }, AUTO_HIDE_MS + i * 400);
+            });
+        }());
+    </script>
+    <script>
+        // 顶部消息条：点 × 立即关闭；不点也在 AUTO_HIDE_MS 毫秒后自动淡出消失
+        (function () {
+            var AUTO_HIDE_MS = 5000;
+            var area = document.getElementById('flashArea');
+            if (!area) { return; }
+
+            function hide(box) {
+                if (!box || box.dataset.hiding === '1') { return; }
+                box.dataset.hiding = '1';
+                box.classList.add('flash-hide');
+                setTimeout(function () {
+                    box.remove();
+                    if (!area.children.length) { area.remove(); }
+                }, 400);
+            }
+
+            Array.prototype.forEach.call(area.querySelectorAll('.flash'), function (box, i) {
+                var btn = box.querySelector('.flash-close');
+                if (btn) {
+                    btn.addEventListener('click', function () { hide(box); });
+                }
+                // 多条消息错开一点，避免同时消失
+                setTimeout(function () { hide(box); }, AUTO_HIDE_MS + i * 400);
+            });
+        }());
+    </script>
 </body>
 </html>

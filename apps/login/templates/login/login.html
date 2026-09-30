@@ -7,59 +7,137 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="{% static 'login/css/style.css' %}">
+    <style>
+        /* 顶部消息条（注册成功提示等）：显示几秒后自动消失 */
+        .flash-area {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 92%;
+            max-width: 420px;
+        }
+        .flash {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(20, 40, 80, .18);
+            transition: opacity .4s ease, transform .4s ease;
+        }
+        .flash-success { background: #1c7c3c; }
+        .flash-error   { background: #b3261e; }
+        .flash-info,
+        .flash-warning { background: #2b7de9; }
+        .flash-hide { opacity: 0; transform: translateY(-8px); }
+        .flash-close {
+            background: transparent;
+            border: 0;
+            color: #fff;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 2px;
+        }
+    </style>
 </head>
-<script>
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    <body>
+        {% if messages %}
+        <div class="flash-area" id="flashArea">
+            {% for message in messages %}
+            <div class="flash flash-{{ message.tags|default:'info' }}">
+                <span>{{ message }}</span>
+                <button type="button" class="flash-close" aria-label="关闭">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-        // 构造 FormData 对象，自动包含表单字段和 CSRF token
-        const formData = new FormData(this);
+        <div class="login-container">
+            <h1 style="user-select: none;">Login</h1>
+            <form id="loginForm" method="post" autocomplete="off">
+                {% csrf_token %}
+                <div>
+                    <label style="user-select: none;">用户名</label>
+                    <input type="text" name="user">
+                </div>
+                <div>
+                    <label style="user-select: none;">密码</label>
+                    <input type="password" name="pwd">
+                </div>
+                <div id="errorMsg" class="alert" style="user-select: none; color: red;">{% if error %}{{ error }}{% endif %}</div>
+                <div>
+                    <button type="submit">登录</button>
+                </div>
+                <div>
+                    <a href="{% url 'register' %}" style="color: aqua;">注册</a>
+                </div>
+            </form>
+        </div>
+    <!-- 这段必须放在 </form> 之后：原先它在 </head> 后面，
+         执行时 <form id="loginForm"> 还没解析出来，getElementById 返回 null，
+         addEventListener 直接抛 TypeError，AJAX 提交从来就没生效过 -->
+         <script>
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+    
+                // 构造 FormData 对象，自动包含表单字段和 CSRF token
+                const formData = new FormData(this);
+    
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'  // 标记 AJAX 请求
+                    }
+                    // 注意：不要设置 Content-Type，浏览器会自动设置为 multipart/form-data 并带上边界
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect_url;
+                    } else {
+                        document.getElementById('errorMsg').innerText = data.error;
+                    }
+                })
+                .catch(error => {
+                    console.error('请求失败:', error);
+                    document.getElementById('errorMsg').innerText = '网络错误，请稍后重试';
+                });
+            });
+        </script>
+    </body>
+    <script>
+        // 顶部消息条：点 × 立即关闭；不点也在 AUTO_HIDE_MS 毫秒后自动淡出消失
+        (function () {
+            var AUTO_HIDE_MS = 5000;
+            var area = document.getElementById('flashArea');
+            if (!area) { return; }
 
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'  // 标记 AJAX 请求
+            function hide(box) {
+                if (!box || box.dataset.hiding === '1') { return; }
+                box.dataset.hiding = '1';
+                box.classList.add('flash-hide');
+                setTimeout(function () {
+                    box.remove();
+                    if (!area.children.length) { area.remove(); }
+                }, 400);
             }
-            // 注意：不要设置 Content-Type，浏览器会自动设置为 multipart/form-data 并带上边界
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.redirect_url;
-            } else {
-                document.getElementById('errorMsg').innerText = data.error;
-            }
-        })
-        .catch(error => {
-            console.error('请求失败:', error);
-            document.getElementById('errorMsg').innerText = '网络错误，请稍后重试';
-        });
-    });
-</script>
-<body>
-    <div class="login-container">
-        <h1 style="user-select: none;">Login</h1>
-        <form id="loginForm" method="post" autocomplete="off">
-            {% csrf_token %}
-            <div>
-                <label style="user-select: none;">用户名</label>
-                <input type="text" name="user">
-            </div>
-            <div>
-                <label style="user-select: none;">密码</label>
-                <input type="password" name="pwd">
-            </div>
-            {% if error %}
-                <div class="alert alert-{{ message.tags }}" style="user-select: none; color: red;">{{ error }}</div>
-            {% endif %}
-            <div>
-                <button type="submit">登录</button>
-            </div>
-            <div>
-                <a href="{% url 'register' %}" style="color: aqua;">注册</a>
-            </div>
-        </form>
-    </div>
-</body>
+
+            Array.prototype.forEach.call(area.querySelectorAll('.flash'), function (box, i) {
+                var btn = box.querySelector('.flash-close');
+                if (btn) {
+                    btn.addEventListener('click', function () { hide(box); });
+                }
+                // 多条消息错开一点，避免同时消失
+                setTimeout(function () { hide(box); }, AUTO_HIDE_MS + i * 400);
+            });
+        }());
+    </script>
 </html>
