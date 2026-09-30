@@ -74,6 +74,10 @@ class HelpCenterDoc(models.Model):
     # 由 content_html 自动转换生成，主要用于导出 / 备份，不参与编辑。
     content_md = models.TextField(blank=True, default='', verbose_name='正文Markdown')
 
+    # 前台是否可见。False = 下线：文档列表里不出现，直接输 /help/<docid>/ 也返回 404。
+    # 默认 True，所以已有文档和新建文档都不受影响。
+    is_visible = models.BooleanField(default=True, db_index=True, verbose_name='前台可见')
+
     created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 

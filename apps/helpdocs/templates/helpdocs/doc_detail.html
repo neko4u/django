@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ doc.title|default:"帮助中心" }}</title>
+<style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: #f7f9fc;
+        color: #1f2733;
+        line-height: 1.8;
+    }
+    a { color: #2b7de9; }
+
+    /* ---------------- 顶栏 ---------------- */
+    .hd {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 24px;
+        background: #fff;
+        border-bottom: 1px solid #e5e9f0;
+    }
+    .hd-home { font-size: 14px; text-decoration: none; color: #2b7de9; white-space: nowrap; }
+    .hd-sep { color: #c8d4e3; }
+    .hd-title {
+        font-size: 14px; color: #5f6b7a;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .hd-menu {
+        display: none;
+        margin-left: auto;
+        padding: 6px 14px; font-size: 13px; font-family: inherit;
+        border: 1px solid #d8e0ea; background: #fff; color: #5f6b7a;
+        border-radius: 8px; cursor: pointer;
+    }
+    .hd-menu:hover { border-color: #2b7de9; color: #2b7de9; }
+
+    /* ---------------- 布局 ---------------- */
+    .layout {
+        display: grid;
+        grid-template-columns: 268px minmax(0, 1fr);
+        gap: 36px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 24px 80px;
+        align-items: start;
+    }
+
+    /* ---------------- 左侧目录 ---------------- */
+    .toc {
+        position: sticky;
+        top: 24px;
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #e5e9f0;
+        border-radius: 12px;
+        padding: 14px 10px 16px;
+    }
+    .toc-head {
+        font-size: 12px; color: #a3aebd; letter-spacing: .06em;
+        padding: 0 12px 10px;
+        border-bottom: 1px solid #eef2f7;
+        margin-bottom: 8px;
+    }
+    .toc-list { display: flex; flex-direction: column; }
+    .toc-link {
+        display: block;
+        padding: 6px 12px;
+        font-size: 13.5px;
+        color: #5f6b7a;
+        text-decoration: none;
+        border-left: 2px solid transparent;
+        border-radius: 0 6px 6px 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .toc-link:hover { color: #2b7de9; background: #f5f9ff; }
+    .toc-lv3 { padding-left: 26px; font-size: 13px; }
+    .toc-lv4 { padding-left: 40px; font-size: 12.5px; color: #8a97a8; }
+    .toc-link.is-active {
+        color: #2b7de9; background: #eef5ff;
+        border-left-color: #2b7de9; font-weight: 600;
+    }
+    .toc-link.is-dead { color: #c8d4e3; cursor: default; }
+
+    /* ---------------- 正文 ---------------- */
+    .doc {
+        background: #fff;
+        border: 1px solid #e5e9f0;
+        border-radius: 12px;
+        padding: 32px 40px 40px;
+        min-width: 0;
+    }
+    .doc-title {
+        margin: 0 0 6px;
+        font-size: 26px;
+        line-height: 1.4;
+        font-weight: 700;
+        color: #131a24;
+    }
+    .doc-meta { font-size: 12.5px; color: #a3aebd; margin-bottom: 26px; }
+    .doc-foot {
+        margin-top: 48px; padding-top: 20px;
+        border-top: 1px solid #eef2f7;
+        font-size: 13px;
+    }
+    .doc-empty { color: #a3aebd; }
+
+    /* 正文排版 */
+    .doc-body { font-size: 15.5px; color: #2b3440; word-wrap: break-word; }
+    .doc-body h2, .doc-body h3, .doc-body h4 { scroll-margin-top: 24px; }
+    .doc-body h2 {
+        font-size: 21px; margin: 40px 0 14px; padding-bottom: 10px;
+        border-bottom: 1px solid #eef2f7; color: #131a24;
+    }
+    .doc-body h3 { font-size: 17.5px; margin: 32px 0 10px; color: #1a2330; }
+    .doc-body h4 { font-size: 15.5px; margin: 24px 0 8px; color: #3d4a5c; }
+    .doc-body h2:first-child, .doc-body h3:first-child { margin-top: 0; }
+    .doc-body p { margin: 14px 0; }
+    .doc-body ul, .doc-body ol { padding-left: 26px; margin: 14px 0; }
+    .doc-body li { margin: 6px 0; }
+    .doc-body img {
+        max-width: 100%; height: auto;
+        border-radius: 8px; border: 1px solid #eef2f7;
+        display: block; margin: 18px 0;
+    }
+    .doc-body a { text-decoration: none; border-bottom: 1px solid rgba(43,125,233,.35); }
+    .doc-body a:hover { border-bottom-color: #2b7de9; }
+    .doc-body code {
+        font-family: Consolas, Monaco, "Courier New", monospace;
+        font-size: .92em;
+        background: #f3f6fa; border: 1px solid #e8eef5;
+        border-radius: 4px; padding: 1px 5px;
+        color: #b8434a;
+    }
+    .doc-body pre {
+        background: #f7f9fc; border: 1px solid #e8eef5; border-radius: 8px;
+        padding: 14px 16px; overflow-x: auto; margin: 18px 0;
+    }
+    .doc-body pre code {
+        background: none; border: none; padding: 0;
+        color: #2b3440; font-size: 13px; line-height: 1.7;
+    }
+    .doc-body blockquote {
+        margin: 18px 0; padding: 10px 18px;
+        border-left: 3px solid #c8d4e3; background: #fafbfd; color: #5f6b7a;
+    }
+    .doc-body blockquote p { margin: 6px 0; }
+    .doc-body table {
+        border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 14px;
+    }
+    .doc-body th, .doc-body td {
+        border: 1px solid #e5e9f0; padding: 9px 12px; text-align: left;
+    }
+    .doc-body th { background: #f7f9fc; font-weight: 600; }
+    .doc-body hr { border: none; border-top: 1px solid #eef2f7; margin: 32px 0; }
+
+    /* ---------------- 窄屏 ---------------- */
+    @media (max-width: 900px) {
+        .layout { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 14px 60px; }
+        .hd-menu { display: block; }
+        .toc {
+            position: static; max-height: none; display: none;
+            padding: 10px 8px 12px;
+        }
+        .layout.toc-open .toc { display: block; }
+        .doc { padding: 22px 18px 28px; }
+        .doc-title { font-size: 22px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="hd">
+    <a class="hd-home" href="/help/">帮助中心</a>
+    <span class="hd-sep">/</span>
+    <span class="hd-title">{{ doc.title|default:"未命名文档" }}</span>
+    {% if toc %}<button type="button" class="hd-menu" id="toc-toggle" aria-expanded="false">目录</button>{% endif %}
+</div>
+
+<div class="layout" id="layout">
+
+    {% if toc %}
+    <aside class="toc" id="toc">
+        <div class="toc-head">本页目录</div>
+        <nav class="toc-list" id="toc-list">
+            {% for item in toc %}
+            <a class="toc-link toc-lv{{ item.level }}" href="#{{ item.id }}"
+               data-target="{{ item.id }}">{{ item.text }}</a>
+            {% endfor %}
+        </nav>
+    </aside>
+    {% endif %}
+
+    <main class="doc">
+        <h1 class="doc-title">{{ doc.title|default:"未命名文档" }}</h1>
+        <div class="doc-meta">更新于 {{ doc.updated_at|date:"Y-m-d H:i" }}</div>
+
+        {% if body_html %}
+        {# 这里之所以敢用 |safe：正文在保存时已经过 bleach 白名单清洗（apps/helpdocs/sanitize.py） #}
+        <article class="doc-body" id="doc-body">{{ body_html|safe }}</article>
+        {% else %}
+        <p class="doc-empty">这篇文档还没有内容。</p>
+        {% endif %}
+
+        <div class="doc-foot"><a href="/help/">← 返回帮助中心</a></div>
+    </main>
+
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var OFFSET = 24;                       // 和 CSS 里 scroll-margin-top 保持一致
+    var layout = document.getElementById('layout');
+    var aside  = document.getElementById('toc');
+    var list   = document.getElementById('toc-list');
+
+    if (!aside || !list) { return; }       // 没有标题就没有目录，直接收工
+
+    var links = Array.prototype.slice.call(list.querySelectorAll('.toc-link'));
+    var heads = [];
+
+    links.forEach(function (a) {
+        var id = a.getAttribute('data-target');
+        var el = document.getElementById(id);
+        if (el) {
+            heads.push({ id: id, el: el, link: a });
+        } else {
+            a.classList.add('is-dead');    // 目录项指向的锚点不存在，灰掉
+        }
+    });
+
+    if (!heads.length) { return; }
+
+    var active = null;
+    function setActive(id) {
+        if (active === id) { return; }
+        active = id;
+        heads.forEach(function (h) {
+            h.link.classList.toggle('is-active', h.id === id);
+        });
+    }
+
+    function sync() {
+        var best = heads[0];
+        for (var i = 0; i < heads.length; i++) {
+            if (heads[i].el.getBoundingClientRect().top - OFFSET <= 0) {
+                best = heads[i];
+            } else {
+                break;
+            }
+        }
+        // 已经滚到底了，就固定高亮最后一条（否则最后几节永远高亮不到）
+        var doc = document.documentElement;
+        if (window.pageYOffset + window.innerHeight >= doc.scrollHeight - 2) {
+            best = heads[heads.length - 1];
+        }
+        setActive(best.id);
+    }
+
+    var ticking = false;
+    function onScroll() {
+        if (ticking) { return; }
+        ticking = true;
+        (window.requestAnimationFrame || function (fn) { setTimeout(fn, 16); })(function () {
+            ticking = false;
+            sync();
+        });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    // 点目录：平滑滚到对应标题
+    list.addEventListener('click', function (e) {
+        var a = e.target.closest ? e.target.closest('.toc-link') : null;
+        if (!a) { return; }
+        var id = a.getAttribute('data-target');
+        var el = document.getElementById(id);
+        if (!el) { return; }
+
+        e.preventDefault();
+        var y = el.getBoundingClientRect().top + window.pageYOffset - OFFSET;
+        if ('scrollBehavior' in document.documentElement.style) {
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        } else {
+            window.scrollTo(0, y);
+        }
+        if (window.history && history.replaceState) {
+            history.replaceState(null, '', '#' + id);
+        }
+        setActive(id);
+        if (window.innerWidth <= 900) {         // 窄屏点完把目录收起来
+            layout.classList.remove('toc-open');
+            var t = document.getElementById('toc-toggle');
+            if (t) { t.setAttribute('aria-expanded', 'false'); }
+        }
+    });
+
+    // 窄屏的目录抽屉
+    var toggle = document.getElementById('toc-toggle');
+    if (toggle && layout) {
+        toggle.addEventListener('click', function () {
+            var open = layout.classList.toggle('toc-open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+
+    sync();
+})();
+</script>
+</body>
+</html>

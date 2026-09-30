@@ -16,6 +16,7 @@ from apps.suadmin.permissions import (
 
 from .models import HelpCenterDoc
 from .sanitize import clean_html, html_to_markdown
+from .toc import inject_heading_ids
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +74,24 @@ def doc_save(request):
     title = (request.POST.get('title') or '').strip()[:200]
 
     safe_html = clean_html(raw_html)
+    # 给 h2/h3/h4 补锚点 id —— 前台左侧目录靠它跳转
+    safe_html, toc = inject_heading_ids(safe_html)
     markdown = html_to_markdown(safe_html)
+
+    # 「前台可见」开关：前端总是显式提交 '1' / '0'；
+    # 万一没带这个字段（例如浏览器缓存了旧页面），就保持原值不动，不擅自把文档下线。
+    raw_visible = request.POST.get('is_visible')
+    if raw_visible is not None:
+        doc.is_visible = raw_visible in ('1', 'true', 'True', 'on', 'yes')
 
     doc.title = title
     doc.content_html = safe_html
     doc.content_md = markdown
     doc.save()
 
-    logger.info('帮助中心文档已保存 docid=%s 管理员=%s html=%d字 md=%d字',
+    logger.info('帮助中心文档已保存 docid=%s 管理员=%s html=%d字 md=%d字 目录标题=%d个',
                 doc.docid, request.session.get('info', {}).get('uid'),
-                len(safe_html), len(markdown))
+                len(safe_html), len(markdown), len(toc))
 
     return JsonResponse({
         'status': 'success',
@@ -91,6 +100,7 @@ def doc_save(request):
         'updated_at': doc.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
         'html_length': len(safe_html),
         'md_length': len(markdown),
+        'is_visible': doc.is_visible,
     })
 
 

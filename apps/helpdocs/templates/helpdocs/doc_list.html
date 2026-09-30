@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帮助中心</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: #f7f9fc; color: #1f2733; line-height: 1.8;
+    }
+    .hd {
+        padding: 14px 24px; background: #fff; border-bottom: 1px solid #e5e9f0;
+        font-size: 14px; color: #5f6b7a;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 36px 24px 80px; }
+    h1 { font-size: 26px; margin: 0 0 6px; color: #131a24; }
+    .sub { font-size: 13.5px; color: #8a97a8; margin: 0 0 28px; }
+
+    .doc-list { display: flex; flex-direction: column; gap: 12px; }
+    .doc-item {
+        display: block; text-decoration: none;
+        background: #fff; border: 1px solid #e5e9f0; border-radius: 12px;
+        padding: 18px 22px; color: inherit; transition: border-color .12s, box-shadow .12s;
+    }
+    .doc-item:hover {
+        border-color: #2b7de9;
+        box-shadow: 0 2px 12px rgba(43,125,233,.10);
+    }
+    .doc-item .t { font-size: 16px; font-weight: 600; color: #131a24; }
+    .doc-item:hover .t { color: #2b7de9; }
+    .doc-item .m { font-size: 12.5px; color: #a3aebd; margin-top: 4px; }
+    .empty {
+        padding: 40px; text-align: center; color: #a3aebd; font-size: 14px;
+        background: #fff; border: 1px dashed #d8e0ea; border-radius: 12px;
+    }
+</style>
+</head>
+<body>
+
+<div class="hd">帮助中心</div>
+
+<div class="wrap">
+    <h1>帮助中心</h1>
+    <p class="sub">共 {{ docs|length }} 篇文档</p>
+
+    {% if docs %}
+    <div class="doc-list">
+        {% for d in docs %}
+        <a class="doc-item" href="/help/{{ d.docid }}/">
+            <div class="t">{{ d.title|default:"未命名文档" }}</div>
+            <div class="m">更新于 {{ d.updated_at|date:"Y-m-d H:i" }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">还没有发布任何文档。</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

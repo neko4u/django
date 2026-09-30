@@ -19,6 +19,7 @@ from apps.login import views as login_views
 from apps.suadmin import views as suadmin_views
 from apps.frpServer import views as frpServer_views
 from apps.helpdocs import admin_views as helpdocs_admin_views
+from apps.helpdocs import views as helpdocs_views
 from django.views.generic import RedirectView
 from django.urls import include
 from apps.llm_chat import views as chat_views
@@ -57,6 +58,9 @@ urlpatterns = [
     path('suadmin/helpdoc/image/upload/', helpdocs_admin_views.image_upload, name='helpdoc_admin_image_upload'),
     path('suadmin/helpdoc/image/list/', helpdocs_admin_views.image_list, name='helpdoc_admin_image_list'),
     path('suadmin/helpdoc/image/delete/', helpdocs_admin_views.image_delete, name='helpdoc_admin_image_delete'),
+       # 帮助中心（前台，默认不需要登录）
+    path('help/', helpdocs_views.doc_list, name='help_doc_list'),
+    path('help/<int:docid>/', helpdocs_views.doc_detail, name='help_doc_detail'),
 
     path('suadmin/helpdoc/<int:docid>/', helpdocs_admin_views.doc_edit, name='helpdoc_admin_edit'),
 
