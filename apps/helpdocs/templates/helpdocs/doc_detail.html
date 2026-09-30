@@ -175,8 +175,10 @@
 <body>
 
 <div class="hd">
+    {% if doc.allow_back_link %}
     <a class="hd-home" href="/help/">帮助中心</a>
     <span class="hd-sep">/</span>
+    {% endif %}
     <span class="hd-title">{{ doc.title|default:"未命名文档" }}</span>
     {% if toc %}<button type="button" class="hd-menu" id="toc-toggle" aria-expanded="false">目录</button>{% endif %}
 </div>

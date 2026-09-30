@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.db import (
@@ -176,10 +177,10 @@ class PointsExchangeService:
             amount=self.total_points,
             balance_after=user_point.points_balance,
             activity=self.activity,
-            detail_json={
+            detail_json=json.dumps({
                 'reward_seconds': self.total_seconds,
                 'quantity': self.quantity
-            }
+            }, ensure_ascii=False)
         )
 
         # 创建时长流水
@@ -195,10 +196,10 @@ class PointsExchangeService:
 
             scene=TimeChangeRecord.Scene.EXCHANGED_FOR,
 
-            detail_json={
+            detail_json=json.dumps({
                 'activity_id': self.activity.id,
                 'points_deducted': self.total_points
-            }
+            }, ensure_ascii=False)
         )
 
         # 创建兑换记录
@@ -216,11 +217,11 @@ class PointsExchangeService:
 
             success=True,
 
-            detail_json={
+            detail_json=json.dumps({
                 'quantity': self.quantity,
                 'point_version_before': old_point_version,
                 'time_version_before': old_time_version
-            }
+            }, ensure_ascii=False)
         )
 
         # 方案 B：连接中充值要「续命」—— 若当前有 active 会话，立刻顺延它的到期时间。

@@ -427,7 +427,7 @@ def settle_session(session, end_reason, end_ts=None, client_ip=None):
                 amount_seconds=used,
                 balance_after=max(0, tb.balance_seconds),
                 scene=TimeChangeRecord.Scene.AUTO_SETTLE,
-                detail_json={'end_reason': end_reason},
+                detail_json=json.dumps({'end_reason': end_reason}, ensure_ascii=False),
             )
 
         UserTimeBalance.objects.filter(user=user).update(
