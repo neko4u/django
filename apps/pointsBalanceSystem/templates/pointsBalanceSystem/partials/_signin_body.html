@@ -1,0 +1,60 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'pointsBalanceSystem/css/signin_card.css' %}">
+
+<div class="signin-embed">
+
+    <div class="signin-card" id="signin-card">
+
+        <!-- 加载中 -->
+        <div class="si-loading" id="si-loading">正在加载签到活动…</div>
+
+        <!-- 正常内容（数据由 JS 填充） -->
+        <div class="si-main" id="si-main" hidden>
+            <div class="si-head">
+                <h1 class="si-name" id="si-name">签到活动</h1>
+                <p class="si-desc" id="si-desc" hidden></p>
+            </div>
+
+            <div class="si-stats">
+                <div class="si-stat">
+                    <span>每次签到</span>
+                    <strong class="si-points" id="si-points">+0</strong>
+                </div>
+                <div class="si-stat">
+                    <span>当前积分</span>
+                    <strong id="si-balance">0</strong>
+                </div>
+                <div class="si-stat">
+                    <span>今日状态</span>
+                    <strong id="si-today">—</strong>
+                </div>
+            </div>
+
+            <div class="si-range" id="si-range"></div>
+
+            <button type="button" class="si-btn" id="si-btn">立即签到</button>
+
+            <div class="si-tip" id="si-tip"></div>
+        </div>
+
+        <!-- 无活动 / 加载失败 -->
+        <div class="si-empty" id="si-empty" hidden>
+            <h1 class="si-empty-title" id="si-empty-title">暂时没有签到活动</h1>
+            <p class="si-empty-text" id="si-empty-text">活动开启后会在这里出现。</p>
+            <button type="button" class="si-retry" id="si-retry">重新加载</button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // 路由由 Django 生成，避免前端硬编码路径写错
+    window.SIGNIN_URLS = {
+        status: '{% url "points:sign_in_status" %}',
+        signin: '{% url "points:sign_in" %}'
+    };
+</script>
+<script src="{% static 'pointsBalanceSystem/js/signin_card.js' %}" defer></script>
+
+<form id="signin-csrf" style="display:none">{% csrf_token %}</form>
