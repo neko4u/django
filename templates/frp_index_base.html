@@ -9,7 +9,6 @@
     <title>{% block title %}default{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'login/css/nav.css' %}">
     <script src="{% static 'login/js/nav.js' %}" defer></script>
-    <script src="{% static 'login/js/nav.js' %}" defer></script>
     <script>
     // session 失效（后端返回 401）时统一跳回 frp 登录页。
     // 覆盖 fetch 与 XMLHttpRequest 两条路径 —— 页面里签到/兑换/历史连接都用它们发请求。

@@ -193,7 +193,8 @@ def frp_user_login(request):
 
 def user_logout(request, mode='general'):
     request.session.flush()
-    return redirect('flogin' if mode == 'frp' else 'login')
+    return redirect('flogin')          # 统一回 flogin 登录页
+
 
 
 def register(request):

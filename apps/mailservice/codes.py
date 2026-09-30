@@ -29,6 +29,9 @@ _EMAIL_CNT_PREFIX = 'mail:cnt:email:'
 _IP_CNT_PREFIX = 'mail:cnt:ip:'
 _DAILY_CNT_PREFIX = 'mail:cnt:daily:'
 _TOTAL_CNT_KEY = 'mail:cnt:total'
+_VERIFY_FAIL_PREFIX = 'mail:vfail:'
+_VERIFY_IP_PREFIX = 'mail:vip:'
+
 
 
 class MailRateLimitError(Exception):
@@ -154,14 +157,46 @@ def send_code(email, scene, ip='', accounts=None):
         code,
         timeout=int(mailconf.CODE_EXPIRE_SECONDS),
     )
+    try:
+        cache.delete(f'{_VERIFY_FAIL_PREFIX}{scene}:{email}')
+    except Exception:
+        pass
+
     logger.info(f'验证码已发送 scene={scene} to={mask_email(email)}')
     return code
 
 
 # =========== 校验 
 
+def verify_rate_ok(ip):
+    """同一 IP 每分钟允许的校验次数（防脚本批量试码）。超限返回 False。
+
+    Redis 异常时放行：验证码本身就存在 Redis 里，读不到时谁也无法通过校验，
+    这里再拦一道只会把正常用户一起挡住。
+    """
+    if not ip:
+        return True
+    limit = int(mailconf.MAX_VERIFY_PER_IP_MINUTE)
+    key = f'{_VERIFY_IP_PREFIX}{ip}:{int(time.time()) // 60}'
+    try:
+        if cache.add(key, 1, timeout=120):
+            return True
+        return int(cache.incr(key)) <= limit
+    except ValueError:
+        cache.set(key, 1, timeout=120)
+        return True
+    except Exception as exc:
+        logger.warning(f'校验频率计数失败，本次放行: {exc}')
+        return True
+
+
 def verify_code(email, scene, code):
-    """校验验证码。成功即删除，保证一次性。"""
+    """校验验证码。成功即删除，保证一次性。
+
+    错误次数达到 MAX_VERIFY_ATTEMPTS 就把验证码作废 ——
+    6 位数字在有效期（默认 10 分钟）内是能被脚本慢慢猜完的，
+    而猜中一次就能拿到 ticket 去重置密码，所以必须有个上限。
+    """
     email = normalize_email(email)
     code = (code or '').strip()
     if scene not in SCENES or not code:
@@ -171,11 +206,28 @@ def verify_code(email, scene, code):
     stored = cache.get(key)
     if not stored:
         return False
-    if not secrets.compare_digest(str(stored), code):
-        return False
 
-    cache.delete(key)
-    return True
+    if secrets.compare_digest(str(stored), code):
+        cache.delete(key)
+        try:
+            cache.delete(f'{_VERIFY_FAIL_PREFIX}{scene}:{email}')
+        except Exception:
+            pass
+        return True
+
+    # 错了：计数 +1；达到上限就作废验证码（想再试必须重新发信，而发信侧有间隔/次数限制）
+    try:
+        fails = _bump_counter(
+            f'{_VERIFY_FAIL_PREFIX}{scene}:{email}',
+            max(60, int(mailconf.CODE_EXPIRE_SECONDS)),
+        )
+        if fails >= int(mailconf.MAX_VERIFY_ATTEMPTS):
+            cache.delete(key)
+            logger.warning(
+                f'验证码错误次数达上限已作废 scene={scene} to={mask_email(email)} fails={fails}')
+    except Exception as exc:
+        logger.warning(f'验证码错误计数异常（不影响本次判定）: {exc}')
+    return False
 
 
 # ============ Ticket 
@@ -225,4 +277,6 @@ __all__ = [
     'normalize_email',
     'send_code',
     'verify_code',
+    'verify_rate_ok',
 ]
+

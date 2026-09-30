@@ -14,7 +14,9 @@ from .codes import (
     normalize_email,
     send_code,
     verify_code,
+    verify_rate_ok,
 )
+
 
 logger = logging.getLogger(__name__)
 ANONYMOUS_SCENES = ('change_pwd', 'reset_pwd')
@@ -139,7 +141,13 @@ def verify_email_code(request):
     if scene not in SCENES:
         return JsonResponse({'success': False, 'message': '未知的验证码场景'}, status=400)
 
+    # 同一 IP 的校验频率限制（防脚本批量试码）
+    if not verify_rate_ok(client_ip(request)):
+        return JsonResponse(
+            {'success': False, 'message': '操作过于频繁，请稍后再试'}, status=429)
+
     code = (request.POST.get('code') or '').strip()
+
 
     user = _current_user(request)
     if user and (user.email or '').strip():

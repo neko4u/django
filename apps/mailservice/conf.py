@@ -29,7 +29,12 @@ _DEFAULTS = {
     'MAX_PER_IP_HOUR': 20,
     # 校验通过后签发的 ticket 有效期（秒）
     'TICKET_EXPIRE_SECONDS': 600,
+    # 同一个验证码最多允许错几次（错满即作废，要重试必须重新发信）
+    'MAX_VERIFY_ATTEMPTS': 5,
+    # 同一 IP 每分钟最多提交多少次验证码校验（防脚本批量试码）
+    'MAX_VERIFY_PER_IP_MINUTE': 30,
 }
+
 
 
 class _MailConf:

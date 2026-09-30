@@ -6,7 +6,7 @@ from functools import wraps
 
 # 会话失效后回哪个登录页
 FRP_LOGIN = 'flogin'
-NORMAL_LOGIN = 'login'
+NORMAL_LOGIN = 'flogin'
 
 
 def login_url_for(request, to=None):
