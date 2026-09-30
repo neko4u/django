@@ -37,6 +37,13 @@ class RegisterForm(forms.ModelForm):
         label="确认密码",
         widget=forms.PasswordInput
     )
+    phone = forms.CharField(
+        label="手机",
+        required=False,
+        max_length=11,
+        help_text="选填",
+    )
+
 
     class Meta:
         model = UserInfo
@@ -72,7 +79,9 @@ class RegisterForm(forms.ModelForm):
         return pwd_confirm
         
     def clean_phone(self):
-        phone = self.cleaned_data.get('phone')
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if not phone:
+            return ''                      # 选填：留空直接通过
         if not re.match(r'^1[3-9]\d{9}$', phone):
             raise ValidationError("手机号码格式错误")
         return phone
@@ -84,6 +93,7 @@ class RegisterForm(forms.ModelForm):
         if UserInfo.objects.filter(email__iexact=email).exists():
             raise ValidationError("该邮箱已被其他账号使用，请更换或使用找回密码")
         return email
+
 
 
     # def clean_avatar(self):
@@ -101,11 +111,20 @@ class ModifyInfoForm(forms.ModelForm):
     传 user 是为了在改邮箱时排除自己（避免"邮箱已被占用"误判）。
     """
 
+    # 与注册保持一致：手机号选填（注册时没填的用户，改资料时不能被手机号卡住）
+    phone = forms.CharField(
+        label='手机',
+        required=False,
+        max_length=11,
+        help_text='选填',
+    )
+
     class Meta:
         model = UserInfo
         fields = ['name', 'email', 'phone']
 
     def __init__(self, *args, **kwargs):
+
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         # 原邮箱必须在 super().__init__() 之后、表单校验之前就记录下来。
@@ -121,7 +140,9 @@ class ModifyInfoForm(forms.ModelForm):
         return name
 
     def clean_phone(self):
-        phone = self.cleaned_data.get('phone')
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if not phone:
+            return ''                      # 选填：留空直接通过
         if not re.match(r'^1[3-9]\d{9}$', phone):
             raise ValidationError("手机号码格式错误")
         return phone
@@ -131,6 +152,7 @@ class ModifyInfoForm(forms.ModelForm):
         if not re.match(EMAIL_REGEX, email):
             raise ValidationError("请填写正确的邮箱格式")
         qs = UserInfo.objects.filter(email__iexact=email)
+
         if self.user is not None:
             qs = qs.exclude(uid=self.user.uid)
         if qs.exists():
