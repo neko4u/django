@@ -21,6 +21,7 @@ from apps.frpServer import views as frpServer_views
 from apps.helpdocs import admin_views as helpdocs_admin_views
 from apps.helpdocs import views as helpdocs_views
 from apps.pointsBalanceSystem import signin_admin_views as signin_admin_views
+from apps.downloads import admin_views as downloads_admin_views
 from django.views.generic import RedirectView
 from django.urls import include
 from apps.llm_chat import views as chat_views
@@ -69,6 +70,10 @@ urlpatterns = [
     path('suadmin/points/signin/', signin_admin_views.activity_index, name='signin_admin_index'),
     path('suadmin/points/signin/save/', signin_admin_views.activity_save, name='signin_admin_save'),
     path('suadmin/points/signin/toggle/', signin_admin_views.activity_toggle, name='signin_admin_toggle'),
+           # 客户端版本管理（FRPClient）
+    path('suadmin/download/', downloads_admin_views.version_index, name='download_admin_index'),
+    path('suadmin/download/upload/', downloads_admin_views.version_upload, name='download_admin_upload'),
+    path('suadmin/download/toggle/', downloads_admin_views.version_toggle, name='download_admin_toggle'),
 
     # frp
         # frp_user_index : 同主页,限制访问内容

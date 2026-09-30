@@ -28,6 +28,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR, "apps"))
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/opt/projects/project1/media'
+# 客户端（FRPClient）存放目录：后台上传的文件放这里，前台下载也从这里取
+DOWNLOAD = {
+    'DIR': '/opt/projects/project1/downloads',   # ← 服务器上实际存放 FRPClient 的目录
+    'FILE_NAME': 'SorielConnection.exe',          # 客户端下载到本地的文件名
+    'MAX_PER_IP_PER_HOUR': 10,                    # 同一 IP 每小时最多下载几次
+    'UPLOAD_MAX_BYTES': 300 * 1024 * 1024,        # 上传单文件上限 300MB
+    'ALLOWED_EXTENSIONS': ('exe', 'zip', '7z', 'rar'),
+}
 CONFIG_FILE = '/opt/config/django/project1settings.json'
 
 #readconfig

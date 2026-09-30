@@ -22,6 +22,7 @@ from django.urls import reverse
 from apps.pointsBalanceSystem.models import PointExchangeActivity, UserPoint
 from apps.pointsBalanceSystem.forms import ExchangeFRPForm
 from apps.captcha.services import verify_ticket
+from apps.downloads import services as download_services
 from apps.mailservice.codes import (
     drop_ticket,
     get_ticket,
@@ -476,7 +477,11 @@ def findex(request):
             'points_balance': points_balance,
             'form': ExchangeFRPForm(user=user, activity=activity),
         })
-
+    # 客户端下载：最新版本 + 状态（ok / off / legacy），口径与 /download/file/ 完全一致
+    context.update({
+        'download_state': download_services.front_state()['mode'],
+        'download_latest': download_services.latest_enabled(),
+    })
     return render(request, 'frpServer/findex.html', context)
 
 @login_required_view

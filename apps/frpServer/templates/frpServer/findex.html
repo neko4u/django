@@ -81,8 +81,15 @@
         <h1 style="font-size:32px;margin:0 0 14px;">下载SorielConnection!</h1>
         <p style="font-size:15px;line-height:1.9;color:#5f6b7a;margin:0 0 20px;">
             下载客户端(Windows)
-            当前最新版本:0.1.0
+            {% if download_latest %}
+                当前最新版本:{{ download_latest.display_version }}
+            {% elif download_state == 'off' %}
+                当前暂无可用版本
+            {% endif %}
         </p>
+        {% if download_state == 'off' %}
+        <p style="font-size:15px;color:#8a97a8;">客户端正在更新维护，请稍后再来。</p>
+        {% else %}
         <a href="{% url 'download_file' %}"
            style="font-size:16px;color:#2b7de9;word-break:break-all;">
             点击下载
@@ -90,6 +97,7 @@
         <p style="font-size:13px;color:#8a97a8;margin:18px 0 0;line-height:1.8;">
             点击上面的地址即可下载。若浏览器没有开始下载，请右键选择「链接另存为」。
         </p>
+        {% endif %}
     </div>
 </div>
 
