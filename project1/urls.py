@@ -20,6 +20,7 @@ from apps.suadmin import views as suadmin_views
 from apps.frpServer import views as frpServer_views
 from apps.helpdocs import admin_views as helpdocs_admin_views
 from apps.helpdocs import views as helpdocs_views
+from apps.pointsBalanceSystem import signin_admin_views as signin_admin_views
 from django.views.generic import RedirectView
 from django.urls import include
 from apps.llm_chat import views as chat_views
@@ -63,6 +64,11 @@ urlpatterns = [
     path('help/<int:docid>/', helpdocs_views.doc_detail, name='help_doc_detail'),
 
     path('suadmin/helpdoc/<int:docid>/', helpdocs_admin_views.doc_edit, name='helpdoc_admin_edit'),
+
+       # 积分签到 · 活动管理
+    path('suadmin/points/signin/', signin_admin_views.activity_index, name='signin_admin_index'),
+    path('suadmin/points/signin/save/', signin_admin_views.activity_save, name='signin_admin_save'),
+    path('suadmin/points/signin/toggle/', signin_admin_views.activity_toggle, name='signin_admin_toggle'),
 
     # frp
         # frp_user_index : 同主页,限制访问内容

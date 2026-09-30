@@ -8,6 +8,11 @@ PERM_HELPCENTER_IMAGE_UPLOAD = 'helpcenter.image.upload'
 PERM_HELPCENTER_IMAGE_DELETE = 'helpcenter.image.delete'
 
 
+# ---------------- 积分签到 ----------------
+PERM_POINTS_SIGNIN_VIEW = 'points.signin.view'
+PERM_POINTS_SIGNIN_EDIT = 'points.signin.edit'
+
+
 # ---------------- 论坛（现有 ad_create_comment 那个功能） ----------------
 PERM_FORUM_COMMENT_CREATE = 'forum.comment.create'
 
@@ -21,6 +26,9 @@ ALL_PERMISSIONS = {
     PERM_HELPCENTER_IMAGE_UPLOAD: '帮助中心 - 上传图片',
     PERM_HELPCENTER_IMAGE_DELETE: '帮助中心 - 删除图片',
     PERM_FORUM_COMMENT_CREATE: '论坛 - 生成回复',
+    PERM_POINTS_SIGNIN_VIEW: '积分签到 - 查看活动',
+    PERM_POINTS_SIGNIN_EDIT: '积分签到 - 管理活动',
+
 }
 
 
