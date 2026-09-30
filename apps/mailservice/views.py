@@ -21,6 +21,9 @@ from .codes import (
 logger = logging.getLogger(__name__)
 ANONYMOUS_SCENES = ('change_pwd', 'reset_pwd')
 
+_FUZZY_SENT_MESSAGE = '验证码已发送，请查收邮件（若长时间未收到请确认邮箱是否正确）'
+
+
 
 def client_ip(request):
     """取真实客户端 IP（项目部署在代理后面）"""
@@ -90,15 +93,10 @@ def _resolve_target(request, scene):
         logger.info(f'找回密码请求的邮箱未注册: {mask_email(email)}')
         return None, JsonResponse({
             'success': True,
-            'message': '验证码已发送，请查收邮件（若长时间未收到请确认邮箱是否正确）',
-            'sent': False,
-        })
-    if count > 1:
-        return None, JsonResponse({
-            'success': False,
-            'message': '该邮箱绑定了多个账号，请联系管理员处理',
+            'message': _FUZZY_SENT_MESSAGE,
         })
     return email, None
+
 
 
 @require_POST
@@ -127,11 +125,13 @@ def send_email_code(request):
     except MailSendError as exc:
         return JsonResponse({'success': False, 'message': str(exc)})
 
-    return JsonResponse({
-        'success': True,
-        'sent': True,
-        'message': f'验证码已发送至 {mask_email(target_email)}，请查收',
-    })
+
+    if request.session.get('is_logged_in'):
+        message = f'验证码已发送至 {mask_email(target_email)}，请查收'
+    else:
+        message = _FUZZY_SENT_MESSAGE
+    return JsonResponse({'success': True, 'message': message})
+
 
 
 @require_POST
