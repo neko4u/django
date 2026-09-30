@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>积分签到 · 活动管理</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: #f5f7fa; color: #1a1a2e; line-height: 1.6;
+    }
+    a { color: #2b7de9; }
+
+    /* ---------------- 顶栏 ---------------- */
+    .topbar {
+        display: flex; align-items: center; gap: 14px;
+        padding: 13px 20px; background: #fff; border-bottom: 1px solid #e5e9f0;
+        position: sticky; top: 0; z-index: 10;
+    }
+    .topbar .back { font-size: 13px; text-decoration: none; white-space: nowrap; color: #5f6b7a; }
+    .topbar .back:hover { color: #2b7de9; }
+    .topbar h1 { font-size: 16px; margin: 0; font-weight: 600; }
+    .topbar .grow { flex: 1 1 auto; }
+    .topbar .clock { font-size: 12.5px; color: #a3aebd; white-space: nowrap; }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 20px 20px 70px; }
+
+    .toast {
+        padding: 11px 16px; border-radius: 10px; font-size: 13.5px;
+        background: #eaf7ef; color: #1f9254; border: 1px solid #cfe9d9;
+        margin-bottom: 16px;
+    }
+
+    .card {
+        background: #fff; border: 1px solid #e5e9f0; border-radius: 12px;
+        padding: 18px 20px 20px; margin-bottom: 18px;
+    }
+    .card-head {
+        display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;
+    }
+    .card-head h2 { font-size: 15px; margin: 0; font-weight: 600; }
+    .card-head .sub { font-size: 12.5px; color: #a3aebd; }
+    .card-head .grow { flex: 1 1 auto; }
+
+    /* ---------------- 列表 ---------------- */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .tbl th, .tbl td {
+        padding: 10px 12px; text-align: left; border-bottom: 1px solid #eef2f7;
+        vertical-align: top;
+    }
+    .tbl th { font-size: 12.5px; color: #8a97a8; font-weight: 600; background: #fafbfd; }
+    .tbl tbody tr:hover { background: #fbfcfe; }
+    .tbl .op { white-space: nowrap; width: 1%; }
+    .tbl .nm { font-weight: 600; color: #1a2330; }
+    .tbl .ds { font-size: 12px; color: #a3aebd; margin-top: 2px; }
+    .tbl .tm { font-size: 12.5px; color: #5f6b7a; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .tbl .pt { font-weight: 600; color: #1f9d55; white-space: nowrap; }
+    .tbl .empty { text-align: center; color: #b6c0cd; padding: 26px 0; }
+
+    .badge {
+        display: inline-block; padding: 2px 9px; border-radius: 999px;
+        font-size: 12px; white-space: nowrap;
+    }
+    .badge.on   { background: #eaf7ef; color: #1f9254; }
+    .badge.off  { background: #f2f4f7; color: #8a97a8; }
+    .badge.wait { background: #fff6e6; color: #c77700; }
+    .badge.done { background: #fdecea; color: #c0392b; }
+
+    .mini {
+        padding: 4px 11px; font-size: 12.5px; font-family: inherit;
+        border: 1px solid #d8e0ea; background: #fff; color: #5f6b7a;
+        border-radius: 7px; cursor: pointer; white-space: nowrap;
+    }
+    .mini:hover { border-color: #2b7de9; color: #2b7de9; }
+    .mini + .mini { margin-left: 6px; }
+
+    /* ---------------- 表单 ---------------- */
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-size: 13px; color: #5f6b7a; margin-bottom: 5px; }
+    input[type=text], input[type=number], input[type=datetime-local], textarea {
+        width: 100%; padding: 8px 11px; font-size: 14px; font-family: inherit;
+        border: 1px solid #d8e0ea; border-radius: 8px; color: #1a1a2e;
+        background: #fff;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #2b7de9; }
+    textarea { min-height: 62px; resize: vertical; }
+    .hint { font-size: 12px; color: #a3aebd; margin-top: 5px; }
+    .hint.warn { color: #c77700; }
+
+    .row-btns { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .row-btns .grow { flex: 1 1 auto; }
+
+    button.primary {
+        padding: 9px 22px; font-size: 14px; font-family: inherit;
+        border: 1px solid #2b7de9; background: #2b7de9; color: #fff;
+        border-radius: 8px; cursor: pointer;
+    }
+    button.primary:hover:not(:disabled) { background: #1f6bd0; }
+    button.primary:disabled { opacity: .55; cursor: not-allowed; }
+    button.ghost {
+        padding: 9px 18px; font-size: 14px; font-family: inherit;
+        border: 1px solid #d8e0ea; background: #fff; color: #5f6b7a;
+        border-radius: 8px; cursor: pointer;
+    }
+    button.ghost:hover { border-color: #c8d4e3; color: #1a1a2e; }
+
+    .chk { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: #5f6b7a; user-select: none; }
+    .chk input { width: auto; margin: 0; }
+
+    .chip {
+        padding: 3px 10px; font-size: 12px; font-family: inherit;
+        border: 1px dashed #c8d4e3; background: #fff; color: #5f6b7a;
+        border-radius: 999px; cursor: pointer;
+    }
+    .chip:hover { border-color: #2b7de9; color: #2b7de9; border-style: solid; }
+
+    #form-state { font-size: 13px; color: #8a97a8; white-space: nowrap; }
+    #form-state.ok  { color: #1f9254; }
+    #form-state.err { color: #c0392b; }
+    #form-state.busy { color: #2b7de9; }
+    .hint-red { font-size: 12px; color: #c0392b; }
+
+    @media (max-width: 760px) {
+        .grid { grid-template-columns: minmax(0, 1fr); }
+        .tbl .tm { white-space: normal; }
+    }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <a class="back" href="/suadmin/">← 后台首页</a>
+    <h1>积分签到 · 活动管理</h1>
+    <span class="grow"></span>
+    <span class="clock">服务器时间 {{ now_text }}</span>
+</div>
+
+<div class="wrap">
+
+    {% if msg %}<div class="toast">{{ msg }}</div>{% endif %}
+
+    <div class="card">
+        <div class="card-head">
+            <h2>活动列表</h2>
+            <span class="sub">共 {{ rows|length }} 个</span>
+            <span class="grow"></span>
+            <span class="sub">生效条件：<b>已启用</b> 且 <b>当前时间在有效期内</b>（两端都算）</span>
+        </div>
+
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>活动名称</th>
+                    <th>状态</th>
+                    <th>有效期</th>
+                    <th>每次积分</th>
+                    <th>创建时间</th>
+                    <th class="op">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in rows %}
+                <tr data-id="{{ r.a.id }}">
+                    <td>
+                        <div class="nm">{{ r.a.name }}</div>
+                        {% if r.a.description %}<div class="ds">{{ r.a.description|truncatechars:70 }}</div>{% endif %}
+                    </td>
+                    <td><span class="badge {{ r.state_cls }}">{{ r.state }}</span></td>
+                    <td class="tm">{{ r.start_text }}<br>～ {{ r.end_text }}</td>
+                    <td class="pt">+{{ r.a.points_per_sign_in }}</td>
+                    <td class="tm">{{ r.a.created_at|date:"Y-m-d H:i" }}</td>
+                    <td class="op">
+                        <button type="button" class="mini js-edit">编辑</button>
+                        <button type="button" class="mini js-toggle"
+                                data-enable="{% if r.a.enable %}1{% else %}0{% endif %}">
+                            {% if r.a.enable %}停用{% else %}启用{% endif %}
+                        </button>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty">还没有任何签到活动，用下面的表单新建一个。</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h2 id="form-title">新建活动</h2>
+            <span class="sub" id="form-sub">填完点「保存」</span>
+            <span class="grow"></span>
+            <span id="form-state"></span>
+        </div>
+
+        <form id="act-form" autocomplete="off" onsubmit="return false;">
+            <input type="hidden" id="f-id" value="">
+
+            <div class="grid">
+                <div>
+                    <label for="f-name">活动名称 <span class="hint-red">*</span></label>
+                    <input type="text" id="f-name" maxlength="128" placeholder="例如 每日签到">
+                </div>
+                <div>
+                    <label for="f-points">每次签到赠送积分</label>
+                    <input type="number" id="f-points" min="0" max="{{ max_points }}" step="1" value="10">
+                    <div class="hint">0 ~ {{ max_points }}，允许填 0（只记签到、不发积分）</div>
+                </div>
+
+                <div class="full">
+                    <label for="f-desc">活动说明（可空）</label>
+                    <textarea id="f-desc" maxlength="500" placeholder="会显示给用户看的一句话说明"></textarea>
+                </div>
+
+                <div>
+                    <label for="f-start">开始时间 <span class="hint-red">*</span></label>
+                    <input type="datetime-local" id="f-start" step="60">
+                </div>
+                <div>
+                    <label for="f-end">结束时间 <span class="hint-red">*</span></label>
+                    <input type="datetime-local" id="f-end" step="60">
+                    <div class="hint warn">
+                        想「一直有效到某天结束」就填 <b>23:59</b>；填 <b>00:00</b> 等于那天刚开始就结束。
+                    </div>
+                </div>
+
+                <div class="full">
+                    <span class="hint">快捷：</span>
+                    <button type="button" class="chip" id="q-today">今天 00:00 ～ 23:59</button>
+                    <button type="button" class="chip" id="q-30d">今天起 30 天</button>
+                    <button type="button" class="chip" id="q-now">现在开始</button>
+                </div>
+
+                <div class="full">
+                    <label class="chk">
+                        <input type="checkbox" id="f-enable" checked>
+                        创建后立即启用（不勾选 = 先建好但停用）
+                    </label>
+                </div>
+            </div>
+
+            <div class="row-btns">
+                <button type="button" class="primary" id="btn-save">保存</button>
+                <button type="button" class="ghost" id="btn-reset">清空 / 转为新建</button>
+                <span class="grow"></span>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<!-- 列表数据（编辑按钮回填表单用）。
+     ⚠️ 服务端已把 < 转义成 \u003c，所以这里可以放心 |safe。 -->
+<script type="application/json" id="rows-data">{{ rows_json|safe }}</script>
+
+<script>
+(function () {
+    'use strict';
+
+    var SAVE_URL   = '{% url "signin_admin_save" %}';
+    var TOGGLE_URL = '{% url "signin_admin_toggle" %}';
+
+    var rowsData = [];
+    try {
+        rowsData = JSON.parse(document.getElementById('rows-data').textContent || '[]');
+    } catch (e) {
+        console.error('列表数据解析失败：', e);
+    }
+
+    var fId      = document.getElementById('f-id');
+    var fName    = document.getElementById('f-name');
+    var fDesc    = document.getElementById('f-desc');
+    var fStart   = document.getElementById('f-start');
+    var fEnd     = document.getElementById('f-end');
+    var fPoints  = document.getElementById('f-points');
+    var fEnable  = document.getElementById('f-enable');
+
+    var btnSave  = document.getElementById('btn-save');
+    var btnReset = document.getElementById('btn-reset');
+    var stateEl  = document.getElementById('form-state');
+    var titleEl  = document.getElementById('form-title');
+    var subEl    = document.getElementById('form-sub');
+
+    function csrf() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (el) { return el.value; }
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function setState(text, cls) {
+        stateEl.textContent = text || '';
+        stateEl.className = cls || '';
+    }
+
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+    // 本地时间 -> datetime-local 需要的 'YYYY-MM-DDTHH:MM'
+    function localValue(d) {
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+               'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function atTime(d, h, mi) {
+        var x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, mi, 0, 0);
+        return localValue(x);
+    }
+
+    function resetForm() {
+        fId.value = '';
+        fName.value = '';
+        fDesc.value = '';
+        fStart.value = '';
+        fEnd.value = '';
+        fPoints.value = '10';
+        fEnable.checked = true;
+        titleEl.textContent = '新建活动';
+        subEl.textContent = '填完点「保存」';
+        setState('');
+        fName.focus();
+    }
+
+    function fillForm(d) {
+        fId.value = d.id;
+        fName.value = d.name || '';
+        fDesc.value = d.description || '';
+        fStart.value = d.start_local || '';
+        fEnd.value = d.end_local || '';
+        fPoints.value = String(d.points != null ? d.points : 10);
+        fEnable.checked = !!d.enable;
+        titleEl.textContent = '编辑活动 #' + d.id;
+        subEl.textContent = '当前状态：' + (d.state || '') + '，改完点「保存」';
+        setState('');
+        window.scrollTo({ top: document.getElementById('act-form').offsetTop - 80,
+                          behavior: 'smooth' });
+    }
+
+    /* ---------------- 网络 ---------------- */
+
+    function post(url, data) {
+        var fd = new FormData();
+        Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+        fd.append('csrfmiddlewaretoken', csrf());
+
+        return fetch(url, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (resp) {
+            return resp.text().then(function (t) {
+                var d = null;
+                try { d = JSON.parse(t); } catch (e) {
+                    console.warn('接口返回的不是 JSON：', resp.status, t.slice(0, 300));
+                }
+                return { http: resp.status, ok: resp.ok, data: d };
+            });
+        });
+    }
+
+    function afterOk(message) {
+        // 直接用「重定向带 msg」的方式刷新：最省事，而且状态永远和后端一致
+        location.replace(location.pathname + '?msg=' + encodeURIComponent(message));
+    }
+
+    /* ---------------- 保存 ---------------- */
+
+    btnSave.addEventListener('click', function () {
+        if (btnSave.disabled) { return; }
+
+        if (!fName.value.trim()) { setState('活动名称不能为空', 'err'); fName.focus(); return; }
+        if (!fStart.value) { setState('请填开始时间', 'err'); fStart.focus(); return; }
+        if (!fEnd.value) { setState('请填结束时间', 'err'); fEnd.focus(); return; }
+        if (fEnd.value <= fStart.value) {
+            setState('结束时间必须晚于开始时间', 'err');
+            fEnd.focus();
+            return;
+        }
+
+        btnSave.disabled = true;
+        setState('保存中…', 'busy');
+
+        post(SAVE_URL, {
+            activity_id: fId.value,
+            name: fName.value,
+            description: fDesc.value,
+            start_at: fStart.value,
+            end_at: fEnd.value,
+            points_per_sign_in: fPoints.value,
+            enable: fEnable.checked ? '1' : '0'
+        }).then(function (r) {
+            if (r.data && r.data.status === 'success') {
+                setState(r.data.message || '已保存', 'ok');
+                afterOk(r.data.message || '已保存');
+                return;
+            }
+            setState('保存失败：' + ((r.data && r.data.message) || ('HTTP ' + r.http)), 'err');
+        }, function (err) {
+            console.error('保存请求未完成：', err);
+            setState('保存失败：请求未送达（' + (err && err.message ? err.message : '未知') + '）', 'err');
+        }).then(function () {
+            btnSave.disabled = false;
+        });
+    });
+
+    btnReset.addEventListener('click', resetForm);
+
+    /* ---------------- 编辑 / 启停 ---------------- */
+
+    function findRow(id) {
+        for (var i = 0; i < rowsData.length; i++) {
+            if (String(rowsData[i].id) === String(id)) { return rowsData[i]; }
+        }
+        return null;
+    }
+
+    document.querySelector('table.tbl').addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('button') : null;
+        if (!btn) { return; }
+        var tr = btn.closest('tr');
+        if (!tr) { return; }
+        var id = tr.getAttribute('data-id');
+
+        if (btn.classList.contains('js-edit')) {
+            var d = findRow(id);
+            if (!d) { setState('找不到这条数据，刷新页面重试', 'err'); return; }
+            fillForm(d);
+            return;
+        }
+
+        if (btn.classList.contains('js-toggle')) {
+            var want = btn.getAttribute('data-enable') === '1' ? '0' : '1';
+            var word = want === '1' ? '启用' : '停用';
+            if (!window.confirm('确定要' + word + '这个活动吗？' +
+                    (want === '0' ? '\n（停用后用户立刻不能再签到）' : ''))) { return; }
+
+            btn.disabled = true;
+            setState(word + '中…', 'busy');
+            post(TOGGLE_URL, { activity_id: id, enable: want }).then(function (r) {
+                if (r.data && r.data.status === 'success') {
+                    afterOk(r.data.message || ('已' + word));
+                    return;
+                }
+                setState('操作失败：' + ((r.data && r.data.message) || ('HTTP ' + r.http)), 'err');
+                btn.disabled = false;
+            }, function (err) {
+                console.error('启停请求未完成：', err);
+                setState('操作失败：请求未送达', 'err');
+                btn.disabled = false;
+            });
+        }
+    });
+
+    /* ---------------- 快捷时间 ---------------- */
+
+    document.getElementById('q-today').addEventListener('click', function () {
+        var now = new Date();
+        fStart.value = atTime(now, 0, 0);
+        fEnd.value = atTime(now, 23, 59);
+    });
+
+    document.getElementById('q-30d').addEventListener('click', function () {
+        var now = new Date();
+        var later = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
+        fStart.value = atTime(now, 0, 0);
+        fEnd.value = atTime(later, 23, 59);
+    });
+
+    document.getElementById('q-now').addEventListener('click', function () {
+        fStart.value = localValue(new Date());
+    });
+
+    // 新建时顺手给个「今天」的默认区间，省得每天都要点两次
+    if (!fStart.value) {
+        var t = new Date();
+        fStart.value = atTime(t, 0, 0);
+        fEnd.value = atTime(t, 23, 59);
+    }
+})();
+</script>
+
+<form style="display:none">{% csrf_token %}</form>
+</body>
+</html>
