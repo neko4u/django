@@ -12,7 +12,8 @@ from django.db import transaction, models
 from django.db.utils import DatabaseError
 from django.utils import timezone
 
-from .models import UserTimeBalance, TimeChangeRecord, FrpSessionRecord, FrpConnectionLog
+from .models import (UserTimeBalance, TimeChangeRecord, FrpSessionRecord,
+                     FrpConnectionLog, RegisterGiftConfig)
 import requests
 
 logger = logging.getLogger(__name__)
@@ -254,6 +255,35 @@ def add_time(user, seconds, scene, detail_json=None, *, extend_session=True):
 
     return tb.balance_seconds
 
+def grant_new_user_gift(user):
+    """新用户注册赠送时长：读后台总开关，决定送不送、送多少。
+
+    返回实际赠送的秒数（0 = 没送）。
+    由 apps/login/services.py 的 grant_register_gift() 在注册成功后调用。
+    """
+    cfg = RegisterGiftConfig.load()
+
+    if not cfg.enable:
+        logger.info('新用户 %s(%s) 注册赠送：后台开关是关的，跳过',
+                    user.uid, getattr(user, 'account', ''))
+        return 0
+
+    seconds = int(cfg.gift_seconds or 0)
+    if seconds <= 0:
+        logger.info('新用户 %s(%s) 注册赠送：配置秒数为 %s，跳过',
+                    user.uid, getattr(user, 'account', ''), seconds)
+        return 0
+
+    balance = add_time(
+        user, seconds, TimeChangeRecord.Scene.REWARD,
+        detail_json='{"reason": "register_gift", "note": "新用户注册赠送"}',
+        extend_session=False,          # 新用户还没有会话，不需要顺延
+    )
+    logger.info('新用户 %s(%s) 注册赠送 %s 秒，赠送后余额 %s 秒',
+                user.uid, getattr(user, 'account', ''), seconds, balance)
+    return seconds
+
+# 会话开始
 
 # 会话开始
 

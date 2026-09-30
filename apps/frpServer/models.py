@@ -188,3 +188,65 @@ class FrpConnectionLog(models.Model):
 
     def __str__(self):
         return f'{self.user_id} {self.get_event_type_display()} {self.event_ts} {self.get_reason_display()}'
+
+# ---------------- 新用户注册赠送时长：全局开关 ----------------
+
+def _default_gift_seconds():
+    """settings 里的兜底值（还没建配置行时用）。"""
+    from django.conf import settings
+    try:
+        return int(getattr(settings, 'FRP_REGISTER_GIFT_SECONDS', 24 * 3600) or 0)
+    except (TypeError, ValueError):
+        return 24 * 3600
+
+class RegisterGiftConfig(models.Model):
+    """新用户注册赠送时长的全局配置。
+
+    全表**只有一行**（pk 固定为 1），后台那个开关改的就是这一行。
+    这行还不存在时，按 settings.FRP_REGISTER_GIFT_SECONDS 兜底，
+    所以不初始化数据也能正常跑（第一次进后台页面会自动把它建出来）。
+    """
+
+    SINGLETON_PK = 1
+
+    enable = models.BooleanField(default=True, verbose_name='开启注册赠送')
+    gift_seconds = models.PositiveIntegerField(
+        default=24 * 3600, verbose_name='赠送秒数',
+        help_text='默认 86400 = 24 小时')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    updated_by = models.CharField(max_length=64, blank=True, default='',
+                                  verbose_name='最后修改人')
+
+    class Meta:
+        db_table = 'frp_register_gift_config'
+        verbose_name = '新用户注册赠送配置'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return '%s / %s 秒' % ('开启' if self.enable else '关闭', self.gift_seconds)
+
+    @property
+    def gift_hours_text(self):
+        """给人看的时长，如 '24.0 小时'。"""
+        return '%.1f 小时' % (self.gift_seconds / 3600.0)
+
+    @classmethod
+    def load(cls):
+        """读那唯一一行；还没建过就返回一个**没存库**的默认对象（纯读，不写库）。"""
+        obj = cls.objects.filter(pk=cls.SINGLETON_PK).first()
+        if obj is not None:
+            return obj
+        seconds = _default_gift_seconds()
+        return cls(enable=seconds > 0,
+                   gift_seconds=seconds if seconds > 0 else 24 * 3600)
+
+    @classmethod
+    def load_or_create(cls):
+        """后台页面用：把这一行真正建出来。"""
+        seconds = _default_gift_seconds()
+        obj, _ = cls.objects.get_or_create(
+            pk=cls.SINGLETON_PK,
+            defaults={'enable': seconds > 0,
+                      'gift_seconds': seconds if seconds > 0 else 24 * 3600},
+        )
+        return obj

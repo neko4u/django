@@ -20,6 +20,26 @@ from apps.pointsBalanceSystem.models import (UserPoint,PointRecord,PointExchange
 
 logger = logging.getLogger(__name__)
 
+# ---------------- 新用户注册赠送时长 ----------------
+
+def grant_register_gift(user):
+    """新用户注册赠送时长（送不送、送多少，由后台 /suadmin/frp/gift/ 的开关决定）。
+
+    真正干活的是 apps.frpServer.services.grant_new_user_gift()，这里只做两件事：
+
+    * ⚠️ **延迟 import** —— apps/frpServer/services.py 在模块级 import 了本文件的
+      JwtService，两边都在模块级 import 会形成循环依赖；
+    * 兜异常 —— 赠送失败只记 error 日志、不往外抛，绝不能因为送时长失败导致注册失败。
+
+    返回实际赠送的秒数（0 = 没送）。
+    """
+    try:
+        from apps.frpServer.services import grant_new_user_gift
+        return grant_new_user_gift(user)
+    except Exception as exc:
+        logger.error('新用户 %s 注册赠送时长失败: %s', user.uid, exc, exc_info=True)
+        return 0
+
 class AuthenticationService:
     @staticmethod
     def authenticate_user(username, password):
@@ -86,6 +106,7 @@ class AuthenticationService:
         user.salt = salt.decode('utf-8')
         # avatar字段已由ModelForm处理
         user.save()
+        grant_register_gift(user)
         return user
 
 

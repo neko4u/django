@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新用户注册赠送开关</title>
+<style>
+  body{margin:0;padding:24px;font-family:system-ui,-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;background:#f5f8ff;color:#2b3445;}
+  h2{font-size:20px;margin:0 0 6px;}
+  h3{font-size:15px;margin:0 0 12px;color:#5f6b7a;}
+  .hint{color:#8a97a8;font-size:13px;line-height:1.9;margin:0 0 16px;}
+  .card{background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(20,40,80,.08);max-width:760px;}
+  .msg{padding:8px 12px;border-radius:6px;margin:0 0 10px;font-size:14px;max-width:760px;}
+  .msg.error{background:#fdecec;color:#b3261e;}
+  .msg.success{background:#e8f6ed;color:#1c7c3c;}
+  label{display:block;font-size:13px;color:#5f6b7a;margin:0 0 6px;}
+  input[type=text]{font-size:14px;padding:7px 9px;border:1px solid #d7dfea;border-radius:6px;width:160px;}
+  button{font-size:14px;padding:8px 18px;border:0;border-radius:6px;background:#2b7de9;color:#fff;cursor:pointer;}
+  .top{display:flex;justify-content:space-between;align-items:baseline;max-width:760px;}
+  a.back{font-size:13px;color:#2b7de9;text-decoration:none;}
+  .state{font-size:15px;margin:0 0 18px;padding:12px 14px;border-radius:8px;line-height:1.8;}
+  .state.on{background:#e8f6ed;color:#1c7c3c;}
+  .state.off{background:#fdecec;color:#b3261e;}
+  .switch{display:flex;align-items:center;gap:10px;margin:0 0 18px;}
+  .switch input{width:18px;height:18px;}
+  .switch span{font-size:14px;}
+  .row{display:flex;gap:14px;align-items:flex-end;}
+  .row .unit{font-size:13px;color:#8a97a8;padding-bottom:10px;}
+  table{border-collapse:collapse;font-size:13px;margin-top:8px;}
+  td{border-bottom:1px solid #eaeff6;padding:7px 12px 7px 0;color:#5f6b7a;}
+  td.k{color:#8a97a8;white-space:nowrap;}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="top">
+  <h2>新用户注册赠送时长 · 开关</h2>
+  <a class="back" href="{% url 'admin_panel' %}">← 返回后台首页</a>
+</div>
+
+{% if messages %}
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+{% endif %}
+
+<p class="hint">
+  只影响<strong>之后新注册</strong>的用户；已经注册过的老用户不会因为改这里而变动（要补发见交付说明里的脚本）。<br>
+  赠送会写一条「时长变更记录」（场景：活动赠送），出问题可追溯到具体时间点。
+</p>
+
+<div class="card">
+  {% if config.enable %}
+    <p class="state on">当前：<strong>开启</strong> —— 新注册用户自动获得 <strong>{{ config.gift_hours_text }}</strong>（{{ config.gift_seconds }} 秒）</p>
+  {% else %}
+    <p class="state off">当前：<strong>关闭</strong> —— 新注册用户<strong>不赠送</strong>时长，初始余额为 0</p>
+  {% endif %}
+
+  <h3>修改</h3>
+  <form method="post" action="{% url 'frp_gift_admin_save' %}">
+    {% csrf_token %}
+    <div class="switch">
+      <input type="checkbox" name="enable" id="id_enable" value="on" {% if config.enable %}checked{% endif %}>
+      <label for="id_enable" style="margin:0;">开启新用户注册赠送</label>
+    </div>
+    <div class="row">
+      <div>
+        <label for="id_gift_hours">赠送时长（小时）</label>
+        <input type="text" name="gift_hours" id="id_gift_hours"
+               value="{{ hours_value }}" placeholder="24">
+      </div>
+      <div class="unit">= <span id="secs">—</span> 秒，最多 {{ max_gift_hours }} 小时</div>
+      <div><button type="submit">保存</button></div>
+    </div>
+    <p class="hint" style="margin:12px 0 0;">
+      支持小数，例如 <code>0.5</code> = 30 分钟。<br>
+      「开启」勾掉就等于暂停赠送（时长值会留着，下次勾上还用这个数）。
+    </p>
+  </form>
+</div>
+
+<h3 style="margin-top:24px;">当前配置明细</h3>
+<div class="card">
+  <table>
+    <tr><td class="k">开关</td><td>{% if config.enable %}开启{% else %}关闭{% endif %}</td></tr>
+    <tr><td class="k">赠送秒数</td><td>{{ config.gift_seconds }} 秒（{{ config.gift_hours_text }}）</td></tr>
+    <tr><td class="k">最后修改人 uid</td><td>{% if config.updated_by %}{{ config.updated_by }}{% else %}—{% endif %}</td></tr>
+    <tr><td class="k">最后修改时间</td><td>{% if config.pk %}{{ config.updated_at|date:"Y-m-d H:i:s" }}{% else %}（还没保存过，用的是默认值）{% endif %}</td></tr>
+    <tr><td class="k">已赠送用户数</td><td>{{ granted_count }} 人（含历史补发）</td></tr>
+  </table>
+</div>
+
+<script>
+  // 把「小时」实时换算成秒显示，避免填错数量级
+  (function () {
+    var box = document.getElementById('id_gift_hours');
+    var out = document.getElementById('secs');
+    if (!box || !out) { return; }
+    function refresh() {
+      var h = parseFloat(box.value);
+      out.textContent = isNaN(h) ? '—' : Math.round(h * 3600);
+    }
+    box.addEventListener('input', refresh);
+    refresh();
+  })();
+</script>
+</body>
+</html>

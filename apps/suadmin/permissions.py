@@ -16,6 +16,9 @@ PERM_POINTS_SIGNIN_EDIT = 'points.signin.edit'
 PERM_DOWNLOAD_VERSION_VIEW = 'download.version.view'
 PERM_DOWNLOAD_VERSION_EDIT = 'download.version.edit'
 
+# ---------------- FRP（注册赠送开关） ----------------
+PERM_FRP_GIFT_VIEW = 'frp.gift.view'
+PERM_FRP_GIFT_EDIT = 'frp.gift.edit'
 
 # ---------------- 论坛（现有 ad_create_comment 那个功能） ----------------
 PERM_FORUM_COMMENT_CREATE = 'forum.comment.create'
@@ -34,6 +37,8 @@ ALL_PERMISSIONS = {
     PERM_POINTS_SIGNIN_EDIT: '积分签到 - 管理活动',
     PERM_DOWNLOAD_VERSION_VIEW: '客户端版本 - 查看版本',
     PERM_DOWNLOAD_VERSION_EDIT: '客户端版本 - 上传/上下架',
+    PERM_FRP_GIFT_VIEW: 'FRP - 查看注册赠送开关',
+    PERM_FRP_GIFT_EDIT: 'FRP - 修改注册赠送开关',
 
 }
 
