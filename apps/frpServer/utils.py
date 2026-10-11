@@ -10,21 +10,16 @@ import os
 SUDO_PATH = "/usr/bin/sudo"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
 
-# FRP 文件路径
 from django.conf import settings
 
-# FRP 文件路径
+# FRP 文件路径（frps 已独立部署到另一台机，本地不一定有这个文件）
 FRP_PATH = getattr(settings, 'FRP_PATH', '') or "/frp/frp_0.65.0_linux_amd64"
 CONFIG_FILE = os.path.join(FRP_PATH, "frps.toml")
 
+# FRP 管理 API / 面板账密：一律来自配置文件，不再硬编码
 FRP_API_URL    = getattr(settings, 'FRP_API_URL', '') or "http://127.0.0.1:7500"
 FRP_ADMIN_USER = getattr(settings, 'FRP_ADMIN_USER', '')
 FRP_ADMIN_PWD  = getattr(settings, 'FRP_ADMIN_PWD', '')
-CONFIG_FILE = os.path.join(FRP_PATH, "frps.toml")
-
-# FRP_API_URL = "http://127.0.0.1:7500"
-# FRP_ADMIN_USER = "admin"
-# FRP_ADMIN_PWD = "admin123"
 
 # ================= 核心工具函数 =================
 

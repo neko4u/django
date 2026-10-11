@@ -29,6 +29,7 @@ def frp_index(request):
     context = {
         'page_title': 'FRP 服务管理',
         'config': config_data,
+        'config_token': utils.get_config_token(),
         'config_err': config_err,
         'api_info': api_info,
         'api_active': api_success,

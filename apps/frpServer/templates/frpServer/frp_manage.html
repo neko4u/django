@@ -69,7 +69,8 @@
                 <button id="btn-restart" class="btn-frp btn-restart" onclick="executeFrp('restart')">重启服务</button>
             {% endif %}
             {% if perms.can_get_new_token %}
-                <button id="btn-token" class="btn-frp btn-token" onclick="executeFrp('token')">刷新 Token</button>
+            <button id="btn-token" class="btn-frp btn-token" disabled
+            title="历史遗留功能：frps 已迁移至独立服务器，本地刷新 Token 不再生效，暂不可用">刷新 Token（暂不可用）</button>
             {% endif %}
         </div>
 
@@ -203,6 +204,10 @@
     }
 
     function executeFrp(action) {
+        if (action === 'token') {
+            printLog('暂不支持：frps 已迁移至独立服务器，Token 需在新机器上更新', true);
+            return;
+        }
         const url = urlConfig[action];
         printLog(`正在执行操作: ${action}...`);
         const allBtns = document.querySelectorAll('.btn-frp');
