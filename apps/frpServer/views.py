@@ -81,7 +81,7 @@ def api_frp_status_json(request):
     return JsonResponse({
         'active': api_success, 
         'data': api_info,
-        'config_token': config_data.get('auth', {}).get('token', 'N/A') if config_data else 'N/A',
+        'config_token': utils.get_config_token(),
         'ts': time.time()
     })
 
