@@ -11,13 +11,20 @@ SUDO_PATH = "/usr/bin/sudo"
 SYSTEMCTL_PATH = "/usr/bin/systemctl"
 
 # FRP 文件路径
-FRP_PATH = "/frp/frp_0.65.0_linux_amd64"
+from django.conf import settings
+
+# FRP 文件路径
+FRP_PATH = getattr(settings, 'FRP_PATH', '') or "/frp/frp_0.65.0_linux_amd64"
 CONFIG_FILE = os.path.join(FRP_PATH, "frps.toml")
 
-# FRP API 配置 (用于获取实时流量状态,以及后续其他功能)
-FRP_API_URL = "http://127.0.0.1:7500"
-FRP_ADMIN_USER = "admin"
-FRP_ADMIN_PWD = "admin123"
+FRP_API_URL    = getattr(settings, 'FRP_API_URL', '') or "http://127.0.0.1:7500"
+FRP_ADMIN_USER = getattr(settings, 'FRP_ADMIN_USER', '')
+FRP_ADMIN_PWD  = getattr(settings, 'FRP_ADMIN_PWD', '')
+CONFIG_FILE = os.path.join(FRP_PATH, "frps.toml")
+
+# FRP_API_URL = "http://127.0.0.1:7500"
+# FRP_ADMIN_USER = "admin"
+# FRP_ADMIN_PWD = "admin123"
 
 # ================= 核心工具函数 =================
 
@@ -46,6 +53,16 @@ def _run_frp_command(action):
     except Exception as e:
         return False, f"系统异常: {str(e)}"
 
+def get_config_token():
+    token = getattr(settings, 'FRP_CONFIG_TOKEN', '') or ''
+    if token:
+        return token
+
+    data, err = read_config()
+    if err or not data:
+        print("[get_config_token] 配置文件无 config_token，且回落到本地 frps.toml 失败: %s" % err)
+        return 'N/A'
+    return data.get('auth', {}).get('token', 'N/A')
 
 def read_config():
     if not os.path.exists(CONFIG_FILE):

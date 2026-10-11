@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.db import transaction, models
 from django.db.utils import DatabaseError
 from django.utils import timezone
+from django.conf import settings
 
 from .models import (UserTimeBalance, TimeChangeRecord, FrpSessionRecord,
                      FrpConnectionLog, RegisterGiftConfig)
@@ -549,7 +550,7 @@ def settle_timeout_sessions(now=None):
 # 巡检任务3/4：对账防伪 + 黑名单管理（调 frps fork 本地管理 API）
 # ---------------------------------------------------------------------------
 
-FRPS_API = "http://127.0.0.1:7500"          # frps 管理端口（同机）
+FRPS_API = getattr(settings, 'FRP_API_URL', '') or "http://127.0.0.1:7500"
 BAN_TIERS = [60, 300, 1800]                  # 递增拉黑档位：1m / 5m / 30m（封顶）
 
 

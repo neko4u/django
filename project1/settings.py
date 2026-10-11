@@ -51,7 +51,16 @@ redis_conf = config.get('redis', {})
 redis_password = quote(redis_conf.get('password', ''), safe='')
 OPENAI_KIMI_API_KEY = config.get('openai_kimi', {}).get('api_key', '')
 OPENAI_KIMI_BASE_URL = config.get('openai_kimi', {}).get('base_url', '')
+_frp = config.get('frp', {})
 
+FRP_API_URL      = _frp.get('api_url') or 'http://127.0.0.1:7500'
+FRP_ADMIN_USER   = _frp.get('admin_user') or ''
+FRP_ADMIN_PWD    = _frp.get('admin_pwd') or ''
+FRP_PUBLIC_HOST  = _frp.get('public_host') or 'connections.sorielflow.com'
+FRP_SERVER_ADDR  = _frp.get('server_addr') or FRP_PUBLIC_HOST
+FRP_SERVER_PORT  = int(_frp.get('server_port') or 7000)
+FRP_CONFIG_TOKEN = _frp.get('config_token') or ''
+FRP_PATH         = _frp.get('path') or '/frp/frp_0.65.0_linux_amd64'
 
 
 # Quick-start development settings - unsuitable for production

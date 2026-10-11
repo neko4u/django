@@ -88,7 +88,7 @@ def api_frp_status_json(request):
 @frp_permission_required()
 def FrpToken(request):
     config_data, _ = utils.read_config()
-    token = config_data.get('auth', {}).get('token', 'N/A')
+    token = utils.get_config_token()
 
     ts = int(time.time())
 
@@ -98,6 +98,8 @@ def FrpToken(request):
     return JsonResponse({
         'isok': True,
         'config_token': token,
+        'frps_addr': settings.FRP_SERVER_ADDR,
+        'frps_port': settings.FRP_SERVER_PORT,
         'ts': ts,
         'sign': sign
     })
@@ -226,7 +228,7 @@ def api_frp_session_status(request):
 # fork: 远程端口租赁接口（FrpClient 调用）
 #   分配时点: 客户端点「连接」时 allocate; 断开时 release
 
-FRP_PUBLIC_HOST = "connections.sorielflow.com"   # 对外展示的访问域名(客户端拼接 host:port)
+FRP_PUBLIC_HOST = settings.FRP_PUBLIC_HOST   # 对外展示域名
 
 
 # POST /api/frp_port/allocate/ — 分配一个远程端口（需先开启时长）
@@ -246,7 +248,9 @@ def api_frp_port_allocate(request):
         port = frp_services.allocate_remote_port(user)
     except ValueError as e:
         return _json_err(str(e))
-    return _json_ok(remote_port=port, host=FRP_PUBLIC_HOST)
+    return _json_ok(remote_port=port, host=FRP_PUBLIC_HOST,
+                    frps_addr=settings.FRP_SERVER_ADDR,
+                    frps_port=settings.FRP_SERVER_PORT)
 
 
 # POST /api/frp_port/release/ — 释放当前端口租约（断开连接时调用）
@@ -267,7 +271,9 @@ def api_frp_port_current(request):
     if not user:
         return _json_err('未登录或登录已过期', code=401, http=401)
     port = frp_services.get_remote_port(user.uid)
-    return _json_ok(remote_port=port or 0, host=FRP_PUBLIC_HOST)
+    return _json_ok(remote_port=port or 0, host=FRP_PUBLIC_HOST,
+                    frps_addr=settings.FRP_SERVER_ADDR,
+                    frps_port=settings.FRP_SERVER_PORT)
 
 
 # GET /api/user_profile/ — 当前用户资料(客户端取头像用, JWT 鉴权)
