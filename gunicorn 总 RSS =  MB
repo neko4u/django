@@ -1,0 +1,33 @@
+[1;34m# /etc/systemd/system/myproject.service[0m
+[Unit]
+Description=My Django Project
+After=network.target postgresql-12.service
+Requires=postgresql-12.service
+
+[Service]
+User=django
+Group=django
+WorkingDirectory=/opt/projects/project1
+Environment="PATH=/opt/projects/project1/venv/bin:/usr/local/"
+
+ExecStartPre=/bin/true
+RuntimeDirectory=gunicorn
+RuntimeDirectoryMode=0755
+
+LimitNOFILE=65535
+
+ExecStart=/opt/projects/project1/venv38/bin/gunicorn \
+          --workers 3 \
+	  --timeout 180 \
+          --chdir /opt/projects/project1 \
+          --bind unix:/run/gunicorn/gunicorn.sock \
+          --log-level info \
+          --access-logfile - \
+          --error-logfile - \
+          project1.wsgi:application
+
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
