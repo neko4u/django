@@ -126,6 +126,8 @@ urlpatterns = [
 
     #llm_chat
     path('chat/', include('apps.llm_chat.urls')),
+    #wiki rag
+    path('wiki/', include('apps.rag.urls')),
     #ft
     path('fault-tree/', include('apps.fault_tree.urls')),
     #default

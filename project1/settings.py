@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'apps.login.apps.LoginConfig',
     'apps.frpServer',
     'apps.helpdocs',
@@ -101,6 +102,7 @@ INSTALLED_APPS = [
     'apps.mailservice',
     'apps.downloads',
     'apps.suadmin',
+    'apps.rag',
 ]
 
 
