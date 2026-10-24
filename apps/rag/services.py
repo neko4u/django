@@ -8,6 +8,7 @@ import logging
 import time
 
 import requests
+from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.core.cache import cache
 from django.db import close_old_connections
@@ -49,7 +50,21 @@ SYSTEM_PROMPT = """你是《星露谷物语》的中文资料助手，只根据�
 
 
 # --------------------------------------------------------------------------- 配置
+def _from_settings(key):
+    """rag.embedding.* 优先从 settings.RAG_EMBEDDING 读（/opt/config/django/project1settings.json）"""
+    short = key.split('.')[-1]
+    cfg = getattr(settings, 'RAG_EMBEDDING', None) or {}
+    val = cfg.get(short)
+    if val is None or (isinstance(val, str) and not val.strip()):
+        return None
+    return str(val).strip()
+
+
 def get_setting(key, default=None):
+    if key.startswith('rag.embedding.'):
+        v = _from_settings(key)
+        if v is not None:
+            return v
     ck = 'rag:setting:' + key
     val = cache.get(ck)
     if val is None:

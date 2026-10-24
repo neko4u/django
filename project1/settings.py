@@ -51,6 +51,7 @@ redis_conf = config.get('redis', {})
 redis_password = quote(redis_conf.get('password', ''), safe='')
 OPENAI_KIMI_API_KEY = config.get('openai_kimi', {}).get('api_key', '')
 OPENAI_KIMI_BASE_URL = config.get('openai_kimi', {}).get('base_url', '')
+RAG_EMBEDDING = config.get('rag_embedding', {}) or {}
 _frp = config.get('frp', {})
 
 FRP_API_URL      = _frp.get('api_url') or 'http://127.0.0.1:7500'

@@ -70,6 +70,11 @@ class Command(BaseCommand):
         self.stdout.write(f'[*] 待导入 {len(pages)} 页 / {total_chunks} 条切片（坏行 {bad}）')
 
         with transaction.atomic():
+            if opts['reset']:
+                RagChunk.objects.all().delete()
+                RagPage.objects.all().delete()
+                self.stdout.write('[!] 已清空 rag_chunk / rag_page')
+
             created_pages = 0
             for pid, p in pages.items():
                 RagPage.objects.update_or_create(
