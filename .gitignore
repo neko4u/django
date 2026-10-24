@@ -16,3 +16,8 @@ local_settings.py
 apps/captcha/assets/captcha_bg/*
 !apps/captcha/assets/captcha_bg/.gitkeep
 /downloads/
+
+# RAG 抓取/切分中间产物（可再生，不进仓库）
+/data/
+*.ndjson
+*.ndjson.gz
