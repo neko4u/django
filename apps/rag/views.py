@@ -17,11 +17,13 @@ from .utils import client_ip, sse
 logger = logging.getLogger(__name__)
 
 NO_HIT_TIP = (
-    '没有在 Wiki 里检索到与「{q}」相关的内容。\n\n'
+    '我收录的资料里没有检索到与「{q}」相关的内容。\n\n'
     '可以试试：\n'
     '- 换成具体的物品/人物/地点名，例如「防风草」「艾芙琳」「Joja超市」\n'
     '- 问得更具体一点，例如「防风草多少钱」「春天的作物有哪些」\n\n'
-    '（部分 Wiki 页面目前抓取不到，正在等站点后端恢复）'
+    '说明：本系统只收录了官方 Wiki 的 74%（1,511 / 2,078 页），'
+    '缺的 500 多页是站点后端故障期间抓不到的（例如「传说之鱼」就没收录）。'
+    '这不是 Wiki 没有，而是我们没抓到。'
 )
 
 
@@ -65,6 +67,8 @@ def ask_stream(request):
         parts = []
         usage = {}
         model_name = ''
+        finish_reason = ''
+        reasoning_chars = 0
         hits = []
         error = ''
         try:
@@ -91,6 +95,20 @@ def ask_stream(request):
                     elif 'usage' in ev:
                         usage = ev.get('usage') or {}
                         model_name = ev.get('model_name', '')
+                        finish_reason = ev.get('finish_reason') or ''
+                        reasoning_chars = int(ev.get('reasoning_chars') or 0)
+
+                # 模型把 token 全花在思考上 / 被截断 → 明确告诉用户，不要静默返回空
+                if not parts:
+                    if finish_reason == 'length':
+                        why = '回答被长度上限截断'
+                    elif reasoning_chars:
+                        why = '模型写了 %d 字思考，把上限用完了，没留给正文' % reasoning_chars
+                    else:
+                        why = '模型返回了空内容'
+                    tip = '（%s，没能生成答案。请把问题问得更具体一些，或稍后重试。）' % why
+                    parts.append(tip)
+                    yield sse({'type': 'delta', 'text': tip})
         except Exception as e:                                 # noqa: BLE001
             error = f'{type(e).__name__}: {e}'
             logger.exception('RAG 生成失败')

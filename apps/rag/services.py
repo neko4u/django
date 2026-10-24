@@ -5,13 +5,14 @@ D2（有 Qwen Key 后）：把 retrieval_mode 改成 hybrid，向量通道自动
 """
 import json
 import logging
+import re
 import time
 
 import requests
 from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.core.cache import cache
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.db.models import F
 
 from apps.llm_config.models import LLMProvider
@@ -21,6 +22,12 @@ from .utils import image_url
 
 logger = logging.getLogger(__name__)
 
+# 复用连接：requests.post 每次都新建 TCP+TLS，冷启动实测能到 15 秒
+_HTTP = requests.Session()
+
+# 别名目标页的额外加权：别名是用户明确说出的映射，要压过字面巧合
+ALIAS_BOOST = 0.6
+
 DEFAULTS = {
     'rag.fts_config': 'zh',          # 没有 zh 配置时自动退回 simple
     'rag.top_k': '8',
@@ -28,7 +35,7 @@ DEFAULTS = {
     'rag.retrieval_mode': 'fts',     # fts | hybrid
     'rag.llm_model': '',             # 空 = 用 provider 的第一个模型
     'rag.temperature': '0.1',
-    'rag.max_tokens': '1500',
+    'rag.max_tokens': '4000',
     'rag.question_max_len': '200',
     'rag.inflight_limit': '2',
     'rag.rate_per_min': '8',
@@ -36,6 +43,7 @@ DEFAULTS = {
     'rag.embedding.model': 'text-embedding-v4',
     'rag.embedding.dim': '1024',
     'rag.embedding.api_key': '',
+    'rag.vector_weight': '1.8',
 }
 
 SYSTEM_PROMPT = """你是《星露谷物语》的中文资料助手，只根据下面提供的【资料】回答。
@@ -44,7 +52,7 @@ SYSTEM_PROMPT = """你是《星露谷物语》的中文资料助手，只根据�
 1. 只能使用【资料】里的事实，不要补充资料以外的设定、数值或攻略。
 2. 每条事实后面标注来源编号，格式如 [1]、[2][3]，编号必须来自【资料】。
 3. 数字、价格、日期、季节、人名必须与资料完全一致，不要换算或四舍五入。
-4. 资料不足以回答时，直接说"Wiki 里没有找到相关内容"，并说明你查到了什么、缺什么，禁止猜测。
+4. 资料不足以回答时，说"我拿到的资料里没有相关内容"，并说明你查到了什么、缺什么，禁止猜测；不要说"Wiki 上没有"——本系统只收录了部分页面。
 5. 用简体中文回答，条理清晰；涉及多个物品/选项时用列表或表格。
 6. 不要输出【资料】以外的网址，也不要提及"资料"这个词本身。"""
 
@@ -97,8 +105,39 @@ def clear_setting_cache():
 
 
 # --------------------------------------------------------------------------- 检索
+# 只丢高频虚词。zhparser 已经把 的/了/吗 这类标成 u 类型丢掉了，
+# 这里补的是被映射成 v/n 但没检索价值的词
+STOPWORDS = set(
+    "的 是 有 会 在 和 与 或 我 你 他 她 它 这 那 了 吗 呢 吧 啊 呀 "
+    "就 都 也 还 要 能 可以 什么 怎么 怎样 多少 哪些 哪个 如何 请问 一下"
+    .split())
+
+
+def _query_terms(question, cfg):
+    """用数据库自己的 zhparser 分词，拿到真实 lexeme（Python 侧不瞎切中文）"""
+    try:
+        with connection.cursor() as cur:
+            cur.execute("SELECT to_tsvector(%s::regconfig, %s)::text", [cfg, question])
+            raw = cur.fetchone()[0] or ''
+    except Exception as e:                                      # noqa: BLE001
+        logger.warning('分词失败(config=%s)，退回 plain 查询: %s', cfg, e)
+        return []
+    terms, seen = [], set()
+    for t in re.findall(r"'([^']+)'", raw):
+        t = t.strip()
+        if not t or t in seen or t in STOPWORDS:
+            continue
+        seen.add(t)                  # 单字也保留（鱼/金/矿 都有意义），只丢虚词
+        terms.append(t)
+    return terms[:24]
+
+
 def _fts_hits(question, cfg, limit=40):
-    """zhparser 全文检索；配置不存在时自动降级 simple，并记住能用的那个"""
+    """zhparser 全文检索。
+
+    关键：不能用 plain（plainto_tsquery 是"所有词必须同时出现"，中文自然问句几乎必然 0 命中）。
+    这里先用 DB 分词拿到 lexeme，再用 OR 拼 tsquery。
+    """
     known = cache.get('rag:fts_config_ok')
     order = [known] if known else []
     for c in (cfg, 'simple'):
@@ -106,11 +145,17 @@ def _fts_hits(question, cfg, limit=40):
             order.append(c)
     for config in order:
         try:
-            q = SearchQuery(question, config=config, search_type='plain')
+            terms = _query_terms(question, config)
+            if terms:
+                safe = [re.sub(r"[&|!():*'\\]", '', t) for t in terms]
+                safe = [t for t in safe if t]
+                query = SearchQuery(' | '.join(safe), config=config, search_type='raw')
+            else:
+                query = SearchQuery(question, config=config, search_type='plain')
             qs = (
                 RagChunk.objects.select_related('page')
-                .annotate(rank=SearchRank(F('search_vector'), q))
-                .filter(search_vector=q)
+                .annotate(rank=SearchRank(F('search_vector'), query))
+                .filter(search_vector=query)
                 .order_by('-rank')[:limit]
             )
             rows = [(c, float(c.rank or 0)) for c in qs]
@@ -119,6 +164,39 @@ def _fts_hits(question, cfg, limit=40):
         except Exception as e:                                  # noqa: BLE001
             logger.warning('FTS(config=%s) 失败: %s', config, e)
     return []
+
+
+def _alias_map():
+    """社区口语 → wiki 页面标题（存 rag_setting 的 rag.aliases，JSON）"""
+    ck = 'rag:alias_map'
+    m = cache.get(ck)
+    if m is None:
+        raw = get_setting('rag.aliases', '') or ''
+        try:
+            m = json.loads(raw) if raw.strip() else {}
+        except Exception:                                      # noqa: BLE001
+            logger.warning('rag.aliases 不是合法 JSON，忽略')
+            m = {}
+        cache.set(ck, m, 300)
+    return m
+
+
+def _expand_aliases(question):
+    """把问句里的口语词追加成页面标题（不替换原词，保留字面覆盖率）"""
+    m = _alias_map()
+    if not m:
+        return question, []
+    extra, hits = [], []
+    for alias in sorted(m, key=len, reverse=True):
+        if len(alias) < 2 or alias not in question:
+            continue
+        target = (m.get(alias) or '').strip()
+        if target and target not in question and target not in extra:
+            extra.append(target)
+            hits.append((alias, target))
+    if not extra:
+        return question, []
+    return question + ' ' + ' '.join(extra), hits
 
 
 def _all_pages():
@@ -151,14 +229,57 @@ def _entity_titles(question, max_hits=4):
     return [pid for _, pid, _ in out]
 
 
-def _entity_hits(question, per_page=3):
+def _q_chars(question):
+    """把问题里的标点/空白全部去掉，只留中英文数字"""
+    return re.sub(r"[^\u4e00-\u9fff0-9a-zA-Z]+", '', question or '')
+
+
+def _literal_coverage(qc, text):
+    """问题里的字，有多少比例**字面**出现在 text 里（长词优先，不重复计数）
+
+    为什么不靠分词：zhparser 会把"几天成熟"切成"天成"+"熟"，而正文是"成熟"+"天"，
+    词面上永远匹配不上。字面匹配绕开这个问题。
+    """
+    if not qc or not text:
+        return 0.0
+    covered = [False] * len(qc)
+    for n in (4, 3, 2, 1):                       # 长词优先
+        for i in range(len(qc) - n + 1):
+            g = qc[i:i + n]
+            if g in STOPWORDS:
+                continue
+            if g not in text:
+                continue
+            start = 0
+            while True:
+                p = qc.find(g, start)
+                if p < 0:
+                    break
+                for k in range(p, p + n):
+                    covered[k] = True
+                start = p + 1
+    return sum(covered) / len(qc)
+
+
+def _lexemes(chunks):
+    """取出这批 chunk 的 tsvector 词集，用于"问题里的词到底出现在哪一块"的精确打分"""
+    ids = [c.pk for c in chunks]
+    if not ids:
+        return {}
+    out = {}
+    for cid, tv in RagChunk.objects.filter(pk__in=ids).values_list('id', 'search_vector'):
+        out[cid] = set(re.findall(r"'([^']+)'", str(tv) or ''))
+    return out
+
+
+def _entity_fallback(question, pids, per_page=2):
+    """命名的页面一条都没被 FTS 命中时的兜底：只给前两块，低分（不抢 FTS 的位置）"""
     out = []
-    for pid in _entity_titles(question):
-        chunks = list(
-            RagChunk.objects.select_related('page').filter(page_id=pid).order_by('chunk_index')[:per_page]
-        )
-        for i, c in enumerate(chunks):
-            out.append((c, 1.5 - 0.1 * i))     # 实体命中权重高于普通全文命中
+    for pid in pids:
+        for i, c in enumerate(
+                RagChunk.objects.select_related('page')
+                        .filter(page_id=pid).order_by('chunk_index')[:per_page]):
+            out.append((c, 0.30 - 0.05 * i))
     return out
 
 
@@ -171,30 +292,61 @@ def _merge(scored):
     return sorted(best.values(), key=lambda x: -x[1])
 
 
-def _title_bonus(question, chunk):
-    t = chunk.page.title
-    if len(t) >= 2 and t in question:
-        return 0.8
-    return 0.0
-
-
 def retrieve(question, top_k=None, per_page=None):
     """返回 [{...}]，已按分数排序、按页面去重"""
     top_k = top_k or get_int('rag.top_k', 8)
     per_page = per_page or get_int('rag.per_page', 3)
     cfg = get_setting('rag.fts_config', 'zh')
 
-    scored = _fts_hits(question, cfg)
-    if scored:
-        scored = [(c, s + _title_bonus(question, c)) for c, s in scored]
-    scored += _entity_hits(question)
+    question, alias_hits = _expand_aliases(question)
+    alias_pids = set()
+    if alias_hits:
+        alias_pids = set(RagPage.objects.filter(
+            title__in=[t for _, t in alias_hits]).values_list('page_id', flat=True))
+        logger.info('别名命中: %s → 页面 %s', alias_hits, alias_pids)
+    pids = set(_entity_titles(question))
+    terms = _query_terms(question, cfg)
+    scored = _fts_hits(question, cfg, limit=60)
+
+    # 命名实体的页面，整页 chunk 无条件进候选池。
+    # 不能指望 ts_rank 把它排进前 60：短块词密度高，infobox 常被挤到 60 名外
+    pool_pids = pids | alias_pids
+    if pool_pids:
+        have = {c.pk for c, _ in scored}
+        extra = (RagChunk.objects.select_related('page')
+                 .filter(page_id__in=pool_pids).order_by('chunk_index')[:80])
+        scored += [(c, 0.0) for c in extra if c.pk not in have]
+
+    # 按"问题里的词覆盖了几成 + 是否出现在章节名 + ts_rank"重新打分。
+    # 不能只用 ts_rank：每块都带标题前缀，短块词密度高会误赢（问"多少钱"返回"食谱"就是这么来的）
+    qc = _q_chars(question)
+    if scored and qc:
+        rescored = []
+        for c, rank in scored:
+            cover = _literal_coverage(qc, c.content or '')
+            head = 0.25 if _literal_coverage(qc, c.header_path or '') > 0.34 else 0.0
+            rescored.append((c, cover + head + 0.3 * min(1.0, rank)))
+        scored = rescored
+
+    # 实体页轻加权（+0.25，不能再给 1.5 —— 那会把向量捞上来的正确块挤掉）
+    if pids:
+        scored = [(c, s + (0.25 if c.page_id in pids else 0.0)) for c, s in scored]
+        hit_pages = {c.page_id for c, _ in scored}
+        scored += _entity_fallback(question, pool_pids - hit_pages)
 
     if get_setting('rag.retrieval_mode', 'fts') == 'hybrid':
         try:
             from .embedding import search_by_vector
-            scored += search_by_vector(question, limit=40)
+            vec = search_by_vector(question, limit=40)
+            if pids:
+                vec = [(c, sc + (0.25 if c.page_id in pids else 0.0)) for c, sc in vec]
+            scored += vec
         except Exception as e:                                  # noqa: BLE001
             logger.warning('向量通道不可用，退回纯关键词检索: %s', e)
+
+    # 别名目标页额外加权：必须放在向量合并之后，否则向量捞上来的块不带这个分
+    if alias_pids:
+        scored = [(c, s + (ALIAS_BOOST if c.page_id in alias_pids else 0.0)) for c, s in scored]
 
     merged = _merge(scored)
 
@@ -274,7 +426,11 @@ def _get_provider():
 
 
 def stream_completion(messages, model=None):
-    """逐段产出 {'delta': '...'}；结束产出 {'usage': {...}}"""
+    """逐段产出 {'delta': '...'}；结束产出 usage / finish_reason / reasoning_chars
+
+    推理模型会把 token 先花在 reasoning_content 上，max_tokens 太小时正文可能是空的
+    （前端表现为"没有收到任何内容"），所以必须把 reasoning_chars 和 finish_reason 报上去。
+    """
     provider, default_model = _get_provider()
     model = model or default_model
     payload = {
@@ -282,22 +438,23 @@ def stream_completion(messages, model=None):
         'messages': messages,
         'stream': True,
         'temperature': get_float('rag.temperature', 0.1),
-        'max_tokens': get_int('rag.max_tokens', 1500),
+        'max_tokens': get_int('rag.max_tokens', 4000),
         'stream_options': {'include_usage': True},
     }
     url = provider.base_url.rstrip('/') + '/chat/completions'
-    resp = requests.post(
+    resp = _HTTP.post(
         url,
         headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {provider.api_key}'},
         json=payload,
         stream=True,
-        timeout=(10, 120),
+        timeout=(10, 180),
     )
     if resp.status_code >= 400:
-        body = resp.text[:300]
-        raise RuntimeError(f'LLM 接口返回 {resp.status_code}: {body}')
+        raise RuntimeError(f'LLM 接口返回 {resp.status_code}: {resp.text[:300]}')
 
     usage = {}
+    reasoning_chars = 0
+    finish_reason = ''
     for raw in resp.iter_lines():
         if not raw:
             continue
@@ -316,11 +473,20 @@ def stream_completion(messages, model=None):
         choices = obj.get('choices') or []
         if not choices:
             continue
-        delta = choices[0].get('delta') or {}
+        ch = choices[0]
+        finish_reason = ch.get('finish_reason') or finish_reason
+        delta = ch.get('delta') or {}
+        if delta.get('reasoning_content'):
+            reasoning_chars += len(delta['reasoning_content'])
         text = delta.get('content') or ''
         if text:
             yield {'delta': text}
-    yield {'usage': usage, 'model_name': model}
+    yield {
+        'usage': usage,
+        'model_name': model,
+        'finish_reason': finish_reason,
+        'reasoning_chars': reasoning_chars,
+    }
 
 
 # --------------------------------------------------------------------------- 限流 / 并发
