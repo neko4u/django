@@ -96,10 +96,8 @@
 | 虚拟环境 | `/opt/projects/project1/venv38`（Python 3.8） |
 | **运行方式** | **Docker Compose**（镜像 `sorielflow/soriel-web:2.0.0`，容器名 `soriel-web`） |
 | 服务管理 | `docker compose up -d` / `down` / `restart web` / `logs -f web` |
-| 进程模型 | 容器内 Gunicorn 3 worker，`--timeout 180`，绑定 `127.0.0.1:8000`（host 网络） |
-| 日志 | **标准输出**：`docker compose logs -f web`（json-file 驱动，10MB × 3 上限） |
-| 进程模型 | Gunicorn 多 worker（**注意：worker 数量少，长连接的 SSE 会占死 worker**） |
-| 日志 | `/opt/projects/project1/django.log`（10MB × 5 轮转，上限约 60MB） |
+| 进程模型 | 容器内 Gunicorn 3 worker，`--timeout 180`，绑定 `127.0.0.1:8000`（host 网络）。**注意：worker 数少，长连接的 SSE 会占死 worker** |
+| 日志 | **stdout**：`docker compose logs -f web`（json-file 驱动 10MB×3）。容器内 `file` handler 另写 `/opt/projects/project1/django.log`，重建即丢，排障以 stdout 为准 |
 | 媒体文件 | `/opt/projects/project1/media` |
 | 客户端下载 | `/opt/projects/project1/downloads`（入库 `SorielConnection.exe`，单文件上限 300MB） |
 
@@ -207,7 +205,7 @@ docker compose exec web python manage.py collectstatic --noinput   # 有静态�
 - 锚点**必须唯一**。如果原文在文件里出现多次，额外说明"第 N 处"或扩大锚点范围
 - 一次给一个文件、一段改动；**不要把多个文件的改动混在一个代码块里**
 - 改完给出**验证命令**（怎么确认生效，看哪一行输出）
-- 涉及需要重启服务的，明确写出 `systemctl restart myproject`
+- 涉及需要重启服务的，明确写出 `docker compose restart web`；若改的是代码，必须写 `docker compose up -d --build`（只 restart 不会生效）
 
 ### 5.3 代理确认改动时的流程
 
@@ -241,6 +239,11 @@ docker compose exec web python manage.py collectstatic --noinput   # 有静态�
 |---|---|---|
 | 高 | `console` handler 仍为 DEBUG，日志噪音转到 journald | `project1/settings.py` |
 | 中 | `frpServer/flogin.html` 末尾有一段**完全重复**的 message-bar `<script>` 块 | 该文件底部 |
+| 中 | `/flogin/`、`/login/` 的 GET 分支不传 `error`，模板 `{% if error %}` 每次都会触发一次变量查找失败 | `apps/login/views.py` |
+| 中 | `downloads/` 目录属主是 `root`，应用以 `django` 运行，上传可能无写权限 | 服务器权限 |
+| 低 | `README.md`、`requirements.txt` 缺失 | 仓库根 |
+| 低 | 无 `Dockerfile` / K8s manifests（规划中） | 仓库根 |
+| 中 | `frpServer/flogin.html` 末尾有一段**完全重复**的 message-bar `<script>` 块 | 该文件底部 |
 | 中 | `/flogin/`、`/login/` 的 GET 分支不传 `error`，模板 `{% if error %}` 每次都触发一次变量查找失败 | `apps/login/views.py` |
 | 中 | `downloads/` 目录属主是 `root`，应用以 `django` 运行，上传可能无写权限 | 服务器权限 |
 | 低 | `README.md`、`requirements.txt` 缺失 | 仓库根 |
@@ -254,11 +257,13 @@ docker compose exec web python manage.py collectstatic --noinput   # 有静态�
 # 进入环境
 cd /opt/projects/project1 && source venv38/bin/activate
 
-# 服务
-systemctl status myproject
-systemctl restart myproject
-journalctl -u myproject -n 100 --no-pager
-journalctl --disk-usage                       # ★ 日志总占用
+# 服务（Docker）
+cd /opt/projects/project1
+docker compose ps
+docker compose up -d
+docker compose restart web
+docker compose logs -f web
+journalctl --disk-usage                       # ★ 系统日志总占用
 
 # 日志
 ls -lh django.log*
