@@ -237,17 +237,12 @@ docker compose exec web python manage.py collectstatic --noinput   # 有静态�
 
 | 优先级 | 问题 | 位置 |
 |---|---|---|
-| 高 | `console` handler 仍为 DEBUG，日志噪音转到 journald | `project1/settings.py` |
 | 中 | `frpServer/flogin.html` 末尾有一段**完全重复**的 message-bar `<script>` 块 | 该文件底部 |
 | 中 | `/flogin/`、`/login/` 的 GET 分支不传 `error`，模板 `{% if error %}` 每次都会触发一次变量查找失败 | `apps/login/views.py` |
 | 中 | `downloads/` 目录属主是 `root`，应用以 `django` 运行，上传可能无写权限 | 服务器权限 |
-| 低 | `README.md`、`requirements.txt` 缺失 | 仓库根 |
-| 低 | 无 `Dockerfile` / K8s manifests（规划中） | 仓库根 |
-| 中 | `frpServer/flogin.html` 末尾有一段**完全重复**的 message-bar `<script>` 块 | 该文件底部 |
-| 中 | `/flogin/`、`/login/` 的 GET 分支不传 `error`，模板 `{% if error %}` 每次都触发一次变量查找失败 | `apps/login/views.py` |
-| 中 | `downloads/` 目录属主是 `root`，应用以 `django` 运行，上传可能无写权限 | 服务器权限 |
-| 低 | `README.md`、`requirements.txt` 缺失 | 仓库根 |
-| 低 | 无 `Dockerfile` / K8s manifests（规划中） | 仓库根 |
+| 中 | `staticfiles` 未挂载进容器：容器内 `collectstatic` 产物落在容器里，Nginx 读宿主机 → 改静态文件线上不生效 | `docker-compose.yml` |
+| 低 | K8s manifests（规划中） | 仓库根 |
+| 低 | 依赖安全升级：Django 3.2.20 → 3.2.25（3.2 已 EOL）、Pillow 8.4.0 → 10.x、requests 2.27.1 → 2.31 | `requirements.txt` |
 
 ---
 
