@@ -1,0 +1,131 @@
+/* ==========================================================================
+   theme.css — 全站设计令牌（Design Tokens）
+   规范文档：docs/THEME.md
+
+   用法：新页面必须在自身样式表 **之前** 引入
+       <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+   规则：页面样式里不写死颜色，一律 var(--xxx)。
+   ========================================================================== */
+
+:root {
+    /* ---- 主色：全站唯一强调色，不要引入第二个主色 ---- */
+    --accent:        #2b7de9;
+    --accent-hover:  #1a6ad4;
+    --accent-active: #155dc0;
+    --accent-light:  #e8f1fe;   /* 浅底：选中态 / 徽标 / 引用角标 */
+    --accent-line:   #b9d4fb;   /* 主色系描边 */
+
+    /* ---- 背景三级：深浅交错的基础 ---- */
+    --bg-primary:   #ffffff;    /* 卡片、内容面 */
+    --bg-secondary: #f5f8ff;    /* 页面底色、侧边栏、顶部栏 */
+    --bg-tertiary:  #e8f0fe;    /* 强调块：气泡、表头、hover */
+
+    /* ---- 文字三级 ---- */
+    --text-primary:   #1a1a2e;
+    --text-secondary: #5f6b7a;
+    --text-muted:     #a0afc2;
+
+    /* ---- 线条 ---- */
+    --border:      #d0d7e2;
+    --border-soft: #e6ecf5;
+
+    /* ---- 语义色 ---- */
+    --danger:      #e5534b;
+    --danger-soft: #ffe3e3;
+    --success:     #2f9e63;
+    --warning:     #d9822b;
+
+    /* ---- 阴影两级：sm 给静态卡片，md 给浮层 ---- */
+    --shadow-sm: 0 1px 3px rgba(26, 42, 78, 0.06);
+    --shadow-md: 0 8px 24px rgba(26, 42, 78, 0.12);
+
+    /* ---- 圆角 ---- */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-pill: 999px;
+
+    /* ---- 间距（4 的倍数） ---- */
+    --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+    --s5: 20px; --s6: 24px; --s8: 32px;
+
+    /* ---- 字体 ---- */
+    --font: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+
+    /* ---- 全局尺寸 ---- */
+    --topbar-h: 56px;
+    --sidebar-w: 260px;
+}
+
+/* ---- 通用底座 ---- */
+* { box-sizing: border-box; }
+
+.t-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.t-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: var(--r-pill);
+}
+.t-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+.t-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- 通用按钮 ---- */
+.t-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s2);
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background .18s, box-shadow .18s, border-color .18s, color .18s;
+    box-shadow: 0 2px 6px rgba(43, 125, 233, .22);
+}
+.t-btn:hover  { background: var(--accent-hover); }
+.t-btn:active { background: var(--accent-active); }
+.t-btn:disabled {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.t-btn--ghost {
+    background: var(--bg-primary);
+    border-color: var(--border);
+    color: var(--text-secondary);
+    box-shadow: none;
+}
+.t-btn--ghost:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-line);
+    color: var(--accent);
+}
+
+/* ---- 通用徽标 ---- */
+.t-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    background: var(--accent-light);
+    color: var(--accent-hover);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* ---- 通用卡片 ---- */
+.t-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+}

@@ -398,6 +398,7 @@ def build_citations(hits):
     for i, h in enumerate(hits, 1):
         out.append({
             'index': i,
+            'page_id': h['page_id'],
             'title': h['title'],
             'header_path': h['header_path'],
             'type': h['content_type'],
@@ -406,6 +407,7 @@ def build_citations(hits):
             'wiki_url': h['wiki_url'],
             'updated_raw': h['updated_raw'],
             'snippet': h['content'][:160],
+            'content': h['content'],
         })
     return out
 

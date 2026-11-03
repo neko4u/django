@@ -241,19 +241,12 @@ LOGGING = {
         },
         # 文件输出
         'file': {
-            'level': 'DEBUG',  # 记录级别
-            'class': 'logging.FileHandler',  # 输出到文件
-            'filename': 'django.log',  # 日志文件路径
+            'level': 'INFO',  # 记录级别
+            'class': 'logging.handlers.RotatingFileHandler',  # 输出到文件
+            'filename': '/opt/projects/project1/django.log',  # 日志文件路径
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
             'formatter': 'verbose'  # 使用详细格式
-        },
-        # 文件输出（带轮转）
-        'rotating_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': 'django.log',
-            'maxBytes': 1024*1024*5,  # 5MB
-            'backupCount': 5,  # 保留5个备份
-            'formatter': 'verbose'
         },
     },
     

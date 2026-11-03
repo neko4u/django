@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星露谷 Wiki 问答</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'rag/css/ask.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<header class="w-top">
+    <div class="w-top-inner">
+        <div class="w-brand">
+            <span class="w-logo">🌾</span>
+            <div>
+                <h1>星露谷 Wiki 问答</h1>
+                <p>基于官方中文维基 · <span id="w-mode">关键词检索</span></p>
+            </div>
+        </div>
+        <div class="w-top-links">
+            <a href="/index/">首页</a>
+            <a href="https://zh.stardewvalleywiki.com/" target="_blank" rel="noopener">原站</a>
+        </div>
+    </div>
+</header>
+
+<main class="w-main">
+    <section id="w-empty" class="w-empty">
+        <h2>问点什么？</h2>
+        <p class="w-sub">答案全部来自中文维基已抓取的 1,544 个页面，并标注来源</p>
+        <div class="w-samples">
+            <button class="w-sample" data-q="防风草多少钱？几天成熟？">防风草多少钱？几天成熟？</button>
+            <button class="w-sample" data-q="送防风草给谁最划算？">送防风草给谁最划算？</button>
+            <button class="w-sample" data-q="Joja超市的温室要多少钱？">Joja超市的温室要多少钱？</button>
+            <button class="w-sample" data-q="求助任务有几种类型？">求助任务有几种类型？</button>
+            <button class="w-sample" data-q="艾芙琳喜欢什么礼物？">艾芙琳喜欢什么礼物？</button>
+            <button class="w-sample" data-q="春天适合种哪些作物？">春天适合种哪些作物？</button>
+        </div>
+    </section>
+
+    <section id="w-thread" class="w-thread"></section>
+</main>
+
+<div class="w-composer">
+    <div class="w-composer-inner">
+        <textarea id="w-input" rows="1" maxlength="200"
+                  placeholder="问关于星露谷的问题…（Enter 发送，Shift+Enter 换行）"></textarea>
+        <button id="w-send" class="w-send">发送</button>
+    </div>
+    <p class="w-tip">游戏素材版权归 ConcernedApe 所有 · 文字内容来自官方 Wiki（CC BY-NC-SA）</p>
+</div>
+
+<script>
+    window.RAG_URLS = {
+        ask: "{% url 'rag:ask_stream' %}",
+        feedback: "{% url 'rag:feedback' %}"
+    };
+</script>
+<script src="{% static 'rag/js/ask.js' %}"></script>
+</body>
+</html>
