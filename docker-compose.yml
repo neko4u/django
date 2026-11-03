@@ -21,11 +21,11 @@ services:
         # ⚠️ 必须等于宿主机 django 用户的 uid/gid：
         #      id -u django && id -g django
         #    不一致会导致挂载的 media/ downloads/ 容器内写不进去
-        APP_UID: 1000
-        APP_GID: 1000
+        APP_UID: 996
+        APP_GID: 994
 
-    image: project1-web:2.0.0
-    container_name: project1-web
+    image: sorielflow/soriel-web:2.0.0
+    container_name: soriel-web
     restart: unless-stopped
 
     # host 网络：容器与宿主机共享回环与网络栈，
@@ -49,6 +49,8 @@ services:
       # settings.py 的 MEDIA_ROOT / DOWNLOAD['DIR'] 一行都不用改
       - /opt/projects/project1/media:/opt/projects/project1/media
       - /opt/projects/project1/downloads:/opt/projects/project1/downloads
+      # 静态资源：让容器里 collectstatic 的产物落回宿主机，供 Nginx 直接读取
+      - /opt/projects/project1/staticfiles:/opt/projects/project1/staticfiles
 
     ulimits:
       # 对齐 systemd 单元里的 LimitNOFILE=65535
