@@ -21,15 +21,21 @@ ENV PIP_NO_CACHE_DIR=1 \
 # numpy / Pillow / psycopg2-binary / bcrypt / pydantic-core 在 cp38 上都有
 # 预编译 wheel，正常情况下不走编译；这里保留工具链作为兜底，
 # 避免某个包临时缺 wheel 时整个构建失败。
-RUN apt-get update \
+# 国内服务器访问 deb.debian.org 极慢（实测单次 apt-get 卡 10 分钟以上），
+# 换成阿里云镜像源。服务器不在国内时改回官方源即可。
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list \
+ && apt-get update \
  && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
+        tzdata \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 COPY requirements.txt .
-RUN pip wheel --wheel-dir /wheels -r requirements.txt
+RUN pip wheel --wheel-dir /wheels -r requirements.txt \
+        -i https://mirrors.aliyun.com/pypi/simple/ \
+        --timeout 30 --retries 3
 
 
 # ---------- 阶段 2：运行时 ----------
@@ -43,12 +49,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_CONFIG_FILE=/opt/config/django/project1settings.json \
     TZ=Asia/Shanghai
 
-# 时区：容器默认 UTC，settings.py 里 TIME_ZONE=Asia/Shanghai 需要 tzdata
-RUN apt-get update \
- && apt-get install -y --no-install-recommends tzdata \
- && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
- && echo "Asia/Shanghai" > /etc/timezone \
- && rm -rf /var/lib/apt/lists/*
+# 时区：settings.py 里 TIME_ZONE=Asia/Shanghai 需要 tzdata。
+# runtime 阶段不装 apt 包 —— 直接从 builder 拷 zoneinfo，
+# 省掉一次 apt-get（国内服务器上这一步要十几分钟）。
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+ && echo "Asia/Shanghai" > /etc/timezone
 
 # 非 root 运行。
 # ⚠️ APP_UID/APP_GID 必须等于宿主机 django 用户的 uid/gid，
