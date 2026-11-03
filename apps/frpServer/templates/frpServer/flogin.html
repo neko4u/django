@@ -255,32 +255,5 @@
             });
         }());
     </script>
-    <script>
-        // 顶部消息条：点 × 立即关闭；不点也在 AUTO_HIDE_MS 毫秒后自动淡出消失
-        (function () {
-            var AUTO_HIDE_MS = 5000;
-            var area = document.getElementById('flashArea');
-            if (!area) { return; }
-
-            function hide(box) {
-                if (!box || box.dataset.hiding === '1') { return; }
-                box.dataset.hiding = '1';
-                box.classList.add('flash-hide');
-                setTimeout(function () {
-                    box.remove();
-                    if (!area.children.length) { area.remove(); }
-                }, 400);
-            }
-
-            Array.prototype.forEach.call(area.querySelectorAll('.flash'), function (box, i) {
-                var btn = box.querySelector('.flash-close');
-                if (btn) {
-                    btn.addEventListener('click', function () { hide(box); });
-                }
-                // 多条消息错开一点，避免同时消失
-                setTimeout(function () { hide(box); }, AUTO_HIDE_MS + i * 400);
-            });
-        }());
-    </script>
 </body>
 </html>

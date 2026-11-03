@@ -55,7 +55,7 @@ def user_login(request):
         return redirect('index')
 
     if request.method == "GET":
-        return render(request, 'login/login.html')
+        return render(request, 'login/login.html', {'error': ''})
 
     if request.method == "POST":
         form = LoginForm(request.POST)
@@ -118,7 +118,7 @@ def frp_user_login(request):
         return redirect('findex')
 
     if request.method == "GET":
-        return render(request, template)
+        return render(request, template, {'error': '', 'need_slider': False})
 
     if request.method == "POST":
         form = LoginForm(request.POST)

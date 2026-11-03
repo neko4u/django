@@ -233,51 +233,57 @@ LOGGING = {
     
     # 日志处理器
     'handlers': {
-        # 控制台输出
+        # 控制台（容器/Systemd 环境下由 journald 采集）
         'console': {
-            'level': 'DEBUG',  # 记录级别
-            'class': 'logging.StreamHandler',  # 输出到控制台
-            'formatter': 'simple'  # 使用简单格式
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
-        # 文件输出
+        # 文件（带轮转：单文件 10MB，保留 5 份，上限 60MB）
         'file': {
-            'level': 'INFO',  # 记录级别
-            'class': 'logging.handlers.RotatingFileHandler',  # 输出到文件
-            'filename': '/opt/projects/project1/django.log',  # 日志文件路径
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/opt/projects/project1/django.log',
             'maxBytes': 10 * 1024 * 1024,
             'backupCount': 5,
-            'formatter': 'verbose'  # 使用详细格式
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
         },
     },
     
     # 日志记录器
     'loggers': {
-        # Django框架本身的日志
+        # Django 框架本身
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',  # 记录级别
-            'propagate': True,  # 传播到父记录器
+            'level': 'INFO',
+            'propagate': True,
         },
-        # 您的应用日志
-        'login': {  # 替换为您的应用名
+        # 登录 / 社区
+        'login': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,  # 不传播到父记录器
+            'level': 'INFO',
+            'propagate': False,
         },
-        # 数据库查询日志
+        # 数据库慢查询：只关心 WARNING 以上，不再逐条打 SQL
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'propagate': False,
         },
         'apps.llm_chat': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
-            'apps.mailservice': {
+        'apps.mailservice': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.rag': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': False,
         },
     }
