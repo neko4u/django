@@ -1,0 +1,107 @@
+# ============================================================
+# project1 容器化 · 第一阶段：只容器化 web
+#
+# 为什么用 network_mode: host 而不是自定义 bridge 网络
+#   1. 配置文件里 database.host / redis.host / frp.api_url 全是 127.0.0.1，
+#      host 网络下容器直接看得见宿主机回环，配置一个字都不用改
+#   2. 宿主机 PostgreSQL 12 装了 zhparser，官方 postgres 镜像没有；
+#      继续用宿主机实例，RAG 中文检索不受影响
+#   3. 宿主机 Nginx 通过 127.0.0.1:8000 反代，改动最小
+#
+# 回退到 systemd 只需要两步：
+#   docker compose down && systemctl start myproject
+# ============================================================
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # ⚠️ 必须等于宿主机 django 用户的 uid/gid：
+        #      id -u django && id -g django
+        #    不一致会导致挂载的 media/ downloads/ 容器内写不进去
+        APP_UID: 1000
+        APP_GID: 1000
+
+    image: project1-web:2.0.0
+    container_name: project1-web
+    restart: unless-stopped
+
+    # host 网络：容器与宿主机共享回环与网络栈，
+    # 配置文件里的 127.0.0.1 全部继续有效
+    network_mode: host
+
+    environment:
+      TZ: Asia/Shanghai
+      # 正式切换用 127.0.0.1:8000；
+      # 首次试跑改成 127.0.0.1:8001，避免和还在跑的 systemd 服务抢端口
+      GUNICORN_BIND: 127.0.0.1:8000
+      GUNICORN_WORKERS: "3"
+      GUNICORN_TIMEOUT: "180"
+      GUNICORN_LOG_LEVEL: info
+      DJANGO_CONFIG_FILE: /opt/config/django/project1settings.json
+
+    volumes:
+      # 密钥配置：只读挂载，容器永远改不到它
+      - /opt/config/django:/opt/config/django:ro
+      # 用户数据：挂到与代码里完全相同的绝对路径，
+      # settings.py 的 MEDIA_ROOT / DOWNLOAD['DIR'] 一行都不用改
+      - /opt/projects/project1/media:/opt/projects/project1/media
+      - /opt/projects/project1/downloads:/opt/projects/project1/downloads
+
+    ulimits:
+      # 对齐 systemd 单元里的 LimitNOFILE=65535
+      nofile:
+        soft: 65535
+        hard: 65535
+
+    # 容器日志上限：默认 json-file 驱动不设上限，
+    # 不配这一项就是下一个 4.4GB
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/flogin/', timeout=4); sys.exit(0 if r.status==200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+
+# ------------------------------------------------------------
+# 第二阶段（先别开）：把 PostgreSQL / Redis 也容器化
+#
+# 启用前必须先解决两件事，否则会静默丢功能：
+#   1. zhparser 中文分词扩展 —— 官方 postgres 镜像不带，
+#      需要自建镜像安装，否则 RAG 检索降级到 simple 分词，召回质量下降
+#   2. 数据迁移 —— 用 pg_dump 导出再 restore，
+#      不要指望直接把宿主机数据目录挂进容器
+# ------------------------------------------------------------
+#   db:
+#     image: postgres:12
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: project1
+#       POSTGRES_USER: project1
+#       POSTGRES_PASSWORD: <从配置文件取>
+#     volumes:
+#       - pgdata:/var/lib/postgresql/data
+#
+#   redis:
+#     image: redis:6
+#     restart: unless-stopped
+#     command: ["redis-server", "--requirepass", "<从配置文件取>", "--appendonly", "yes"]
+#     volumes:
+#       - redisdata:/data
+#
+# volumes:
+#   pgdata:
+#   redisdata:
