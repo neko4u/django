@@ -21,3 +21,12 @@ apps/captcha/assets/captcha_bg/*
 /data/
 *.ndjson
 *.ndjson.gz
+
+# --- 2026-11-03 仓库整理 ---
+# *.bak 匹配不到 .gitignore.bak.<时间戳>，曾导致备份文件误入版本库
+*.bak.*
+get-pip.py
+# 本地界面备份目录
+.backup/
+# 日志轮转产物
+django.log.*
