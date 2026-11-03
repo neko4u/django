@@ -1,0 +1,57 @@
+{
+  "_comment": "复制到 /opt/config/django/project1settings.json 后填入真实值，并 chmod 600。此文件不要提交真实密钥。",
+
+  "secret_key": "CHANGE_ME_django_secret_key",
+  "debug": false,
+  "allowed_hosts": ["example.com", "localhost", "127.0.0.1"],
+
+  "database": {
+    "name": "project1",
+    "user": "project1",
+    "password": "CHANGE_ME",
+    "host": "127.0.0.1",
+    "port": 5432
+  },
+
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "db": 0,
+    "password": "CHANGE_ME"
+  },
+
+  "token_secret_key": "CHANGE_ME_jwt_secret",
+
+  "openai_kimi": {
+    "api_key": "CHANGE_ME",
+    "base_url": "https://api.moonshot.cn/v1"
+  },
+
+  "rag_embedding": {
+    "api_key": "CHANGE_ME",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "text-embedding-v4",
+    "dim": 1024,
+    "batch": 10
+  },
+
+  "frp": {
+    "api_url": "http://127.0.0.1:7500",
+    "admin_user": "admin",
+    "admin_pwd": "CHANGE_ME",
+    "public_host": "example.com",
+    "server_addr": "example.com",
+    "server_port": 7000,
+    "config_token": "CHANGE_ME",
+    "path": "/opt/frp/frp_0.65.0_linux_amd64"
+  },
+
+  "captcha": {},
+
+  "mail": {
+    "provider": "console",
+    "resend_smtp_password": "CHANGE_ME",
+    "resend_from_email": "noreply@example.com",
+    "resend_from_name": "Example"
+  }
+}
