@@ -94,7 +94,10 @@
 | 系统 | CentOS 7 |
 | 项目路径 | `/opt/projects/project1` |
 | 虚拟环境 | `/opt/projects/project1/venv38`（Python 3.8） |
-| 服务管理 | `systemctl {start\|stop\|restart\|status} myproject` |
+| **运行方式** | **Docker Compose**（镜像 `sorielflow/soriel-web:2.0.0`，容器名 `soriel-web`） |
+| 服务管理 | `docker compose up -d` / `down` / `restart web` / `logs -f web` |
+| 进程模型 | 容器内 Gunicorn 3 worker，`--timeout 180`，绑定 `127.0.0.1:8000`（host 网络） |
+| 日志 | **标准输出**：`docker compose logs -f web`（json-file 驱动，10MB × 3 上限） |
 | 进程模型 | Gunicorn 多 worker（**注意：worker 数量少，长连接的 SSE 会占死 worker**） |
 | 日志 | `/opt/projects/project1/django.log`（10MB × 5 轮转，上限约 60MB） |
 | 媒体文件 | `/opt/projects/project1/media` |
@@ -121,6 +124,18 @@
 - PostgreSQL：库名/用户/端口全部来自配置文件
 - RAG 依赖 `zhparser` 扩展做中文全文检索；**没有装 zhparser 时检索会退回 `simple` 配置**（代码里有降级逻辑，不会崩，但召回质量会掉）
 - Redis：同时承担缓存、登录失败计数、限流、RAG 并发闸门。**Redis 挂 = 登录锁失效 + 限流失效 + RAG 不可用**
+
+### 3.4 部署与更新
+
+**前提**：systemd 的 `myproject` 已停用（`systemctl stop/disable myproject`）。
+Nginx 的 `proxy_pass` 指向 `127.0.0.1:8000`。
+
+```bash
+cd /opt/projects/project1
+git pull origin main
+docker compose up -d --build          # 改代码/依赖后必须 --build
+docker compose exec web python manage.py migrate              # 有模型变更时
+docker compose exec web python manage.py collectstatic --noinput   # 有静态变更时
 
 ---
 
